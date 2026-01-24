@@ -17,7 +17,7 @@ export const createDocument = (id: string): Document => {
   return {
     id,
     blocks: [],
-    layout: createLayoutSettings("desktop")
+    layout: createLayoutSettings("mobile")
   };
 };
 

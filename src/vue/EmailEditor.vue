@@ -94,7 +94,7 @@ const props = withDefaults(
   }>(),
   {
     modelValue: undefined,
-    previewMode: "desktop",
+    previewMode: "mobile",
     document: null,
     onImageUpload: undefined,
   }
@@ -126,7 +126,9 @@ const buildPreviewHtml = (document: Document): string => {
   const content = document.blocks.map(renderBlockHtml).join("");
   const fallback =
     "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#6f6357;\">Add a block to see a preview.</div>";
-  return wrapEmailHtml(content || fallback, document.layout.previewWidthPx);
+  return wrapEmailHtml(content || fallback, document.layout.previewWidthPx, {
+    responsive: true
+  });
 };
 
 const previewHtml = computed(() => buildPreviewHtml(editorDocument.value));
@@ -333,13 +335,13 @@ defineExpose({
 
 .ee-workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 16px;
   align-items: start;
 }
 
 .ee-workspace.is-preview-hidden {
-  grid-template-columns: minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ee-panel {
@@ -350,6 +352,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   min-height: 320px;
+  min-width: 0;
 }
 
 .ee-panel-header {
@@ -376,6 +379,7 @@ defineExpose({
 .ee-panel-body {
   padding: 12px 16px 16px;
   overflow: auto;
+  min-width: 0;
 }
 
 .ee-preview-canvas {
@@ -384,6 +388,8 @@ defineExpose({
   justify-content: center;
   align-items: start;
   padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
   border-radius: 14px;
   border: 1px dashed rgba(28, 24, 18, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(245, 236, 222, 0.6) 100%);

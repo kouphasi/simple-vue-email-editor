@@ -1,5 +1,5 @@
 <template>
-  <div class="ee-blocks" :style="{ width: `${widthPx}px` }">
+  <div class="ee-blocks" :style="{ width: `min(100%, ${widthPx}px)` }">
     <div
       v-for="block in document.blocks"
       :key="block.id"
@@ -136,6 +136,7 @@ const handleDragEnd = (): void => {
   border-radius: var(--ee-radius);
   padding: 16px;
   box-shadow: var(--ee-shadow);
+  box-sizing: border-box;
   max-width: 100%;
   margin: 0 auto;
 }

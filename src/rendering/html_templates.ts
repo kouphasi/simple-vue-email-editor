@@ -1,4 +1,14 @@
-export const wrapEmailHtml = (content: string, widthPx: number): string => {
+export const wrapEmailHtml = (
+  content: string,
+  widthPx: number,
+  options: { responsive?: boolean } = {}
+): string => {
+  const responsive = options.responsive ?? false;
+  const widthAttribute = responsive ? "100%" : `${widthPx}`;
+  const widthStyles = responsive
+    ? `width:100%;max-width:${widthPx}px;`
+    : `width:${widthPx}px;max-width:${widthPx}px;`;
+
   return `<!doctype html>
 <html>
   <head>
@@ -10,7 +20,7 @@ export const wrapEmailHtml = (content: string, widthPx: number): string => {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
       <tr>
         <td align="center" style="padding:24px 12px;">
-          <table role="presentation" width="${widthPx}" cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:${widthPx}px;max-width:${widthPx}px;background-color:#ffffff;">
+          <table role="presentation" width="${widthAttribute}" cellspacing="0" cellpadding="0" style="border-collapse:collapse;${widthStyles}background-color:#ffffff;">
             <tr>
               <td style="padding:24px;">
                 ${content}
