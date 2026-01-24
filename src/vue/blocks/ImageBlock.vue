@@ -5,12 +5,12 @@
         type="url"
         :value="block.url"
         placeholder="https://example.com/image.png"
-        @input="update({ url: ($event.target as HTMLInputElement).value })"
+        @input="handleUrlInput"
       />
       <span class="ee-image-status">{{ block.status }}</span>
       <select
         :value="block.display.align ?? 'center'"
-        @change="updateDisplay({ align: ($event.target as HTMLSelectElement).value as ImageBlock['display']['align'] })"
+        @change="handleAlignChange"
       >
         <option value="left">left</option>
         <option value="center">center</option>
@@ -21,14 +21,14 @@
         min="0"
         :value="block.display.widthPx ?? ''"
         placeholder="Width"
-        @input="updateDisplay({ widthPx: parseNumber(($event.target as HTMLInputElement).value) })"
+        @input="handleWidthInput"
       />
       <input
         type="number"
         min="0"
         :value="block.display.heightPx ?? ''"
         placeholder="Height"
-        @input="updateDisplay({ heightPx: parseNumber(($event.target as HTMLInputElement).value) })"
+        @input="handleHeightInput"
       />
       <input type="file" accept="image/*" @change="handleFileChange" />
     </div>
@@ -64,6 +64,26 @@ const updateDisplay = (display: Partial<ImageBlock["display"]>): void => {
       ...display
     }
   });
+};
+
+const handleUrlInput = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  update({ url: input.value });
+};
+
+const handleAlignChange = (event: Event): void => {
+  const input = event.target as HTMLSelectElement;
+  updateDisplay({ align: input.value as ImageBlock["display"]["align"] });
+};
+
+const handleWidthInput = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  updateDisplay({ widthPx: parseNumber(input.value) });
+};
+
+const handleHeightInput = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  updateDisplay({ heightPx: parseNumber(input.value) });
 };
 
 const parseNumber = (value: string): number | undefined => {

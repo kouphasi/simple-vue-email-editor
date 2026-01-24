@@ -5,17 +5,17 @@
         type="text"
         :value="block.label"
         placeholder="Button label"
-        @input="update({ label: ($event.target as HTMLInputElement).value })"
+        @input="handleLabelInput"
       />
       <input
         type="url"
         :value="block.url"
         placeholder="https://example.com"
-        @input="update({ url: ($event.target as HTMLInputElement).value })"
+        @input="handleUrlInput"
       />
       <select
         :value="block.shape"
-        @change="update({ shape: ($event.target as HTMLSelectElement).value as ButtonBlock['shape'] })"
+        @change="handleShapeChange"
       >
         <option value="square">square</option>
         <option value="rounded">rounded</option>
@@ -24,12 +24,12 @@
       <input
         type="color"
         :value="block.textColor"
-        @change="update({ textColor: ($event.target as HTMLInputElement).value })"
+        @change="handleTextColorChange"
       />
       <input
         type="color"
         :value="block.backgroundColor"
-        @change="update({ backgroundColor: ($event.target as HTMLInputElement).value })"
+        @change="handleBackgroundColorChange"
       />
     </div>
   </div>
@@ -51,6 +51,31 @@ const update = (next: Partial<ButtonBlock>): void => {
     ...props.block,
     ...next
   });
+};
+
+const handleLabelInput = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  update({ label: input.value });
+};
+
+const handleUrlInput = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  update({ url: input.value });
+};
+
+const handleShapeChange = (event: Event): void => {
+  const input = event.target as HTMLSelectElement;
+  update({ shape: input.value as ButtonBlock["shape"] });
+};
+
+const handleTextColorChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  update({ textColor: input.value });
+};
+
+const handleBackgroundColorChange = (event: Event): void => {
+  const input = event.target as HTMLInputElement;
+  update({ backgroundColor: input.value });
 };
 </script>
 
