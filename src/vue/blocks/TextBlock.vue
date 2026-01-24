@@ -36,6 +36,7 @@ const emit = defineEmits<{
 const contentRef = ref<HTMLDivElement | null>(null);
 const lastText = ref(props.block.text);
 const isComposing = ref(false);
+const pendingSelection = ref<{ start: number; end: number } | null>(null);
 
 const escapeHtml = (value: string): string => {
   return value
@@ -95,7 +96,7 @@ const updateHtml = (): void => {
   contentRef.value.innerHTML = renderTextWithRuns(props.block.text, props.block.runs);
 };
 
-const getSelectionRange = (): { start: number; end: number } | null => {
+const getSelectionOffsets = (): { start: number; end: number } | null => {
   if (!contentRef.value) {
     return null;
   }
@@ -120,11 +121,73 @@ const getSelectionRange = (): { start: number; end: number } | null => {
   endRange.setEnd(range.endContainer, range.endOffset);
   const end = endRange.toString().length;
 
-  if (start === end) {
+  return { start, end };
+};
+
+const getSelectionRange = (): { start: number; end: number } | null => {
+  const selection = getSelectionOffsets();
+  if (!selection || selection.start === selection.end) {
     return null;
   }
 
-  return { start, end };
+  return selection;
+};
+
+const findPositionForOffset = (
+  root: HTMLElement,
+  offset: number
+): { node: Node; offset: number } => {
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let current = walker.nextNode() as Text | null;
+  let remaining = offset;
+  let lastText: Text | null = null;
+
+  while (current) {
+    const length = current.nodeValue?.length ?? 0;
+    if (remaining <= length) {
+      return { node: current, offset: remaining };
+    }
+
+    remaining -= length;
+    lastText = current;
+    current = walker.nextNode() as Text | null;
+  }
+
+  if (lastText) {
+    return { node: lastText, offset: lastText.nodeValue?.length ?? 0 };
+  }
+
+  return { node: root, offset: 0 };
+};
+
+const restoreSelection = (selection: { start: number; end: number }): void => {
+  if (!contentRef.value) {
+    return;
+  }
+
+  const doc = contentRef.value.ownerDocument;
+  const active = doc.activeElement;
+  if (active !== contentRef.value) {
+    return;
+  }
+
+  const textLength = props.block.text.length;
+  const start = Math.min(Math.max(selection.start, 0), textLength);
+  const end = Math.min(Math.max(selection.end, 0), textLength);
+  const startPosition = findPositionForOffset(contentRef.value, start);
+  const endPosition = findPositionForOffset(contentRef.value, end);
+
+  const range = doc.createRange();
+  range.setStart(startPosition.node, startPosition.offset);
+  range.setEnd(endPosition.node, endPosition.offset);
+
+  const selectionState = doc.getSelection();
+  if (!selectionState) {
+    return;
+  }
+
+  selectionState.removeAllRanges();
+  selectionState.addRange(range);
 };
 
 const handleInput = (): void => {
@@ -134,6 +197,7 @@ const handleInput = (): void => {
   const nextText = contentRef.value?.textContent ?? "";
   const nextRuns = adjustRunsForTextChange(lastText.value, nextText, props.block.runs);
   lastText.value = nextText;
+  pendingSelection.value = getSelectionOffsets();
   emit("update", {
     ...props.block,
     text: nextText,
@@ -200,6 +264,10 @@ watch(
     }
     lastText.value = props.block.text;
     updateHtml();
+    if (pendingSelection.value) {
+      restoreSelection(pendingSelection.value);
+      pendingSelection.value = null;
+    }
   },
   { deep: true }
 );
