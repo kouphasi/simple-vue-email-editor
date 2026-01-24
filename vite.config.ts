@@ -20,5 +20,14 @@ export default defineConfig({
         }
       }
     }
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    include: [
+      "src/**/*.{test,spec}.{ts,tsx,vue}",
+      "tests/**/*.{test,spec}.{ts,tsx,vue}"
+    ],
+    setupFiles: "tests/setup.ts"
   }
 });
