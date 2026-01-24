@@ -14,6 +14,8 @@
       class="ee-text-content"
       contenteditable="true"
       @input="handleInput"
+      @compositionstart="isComposing = true"
+      @compositionend="onCompositionEnd"
     ></div>
   </div>
 </template>
@@ -33,6 +35,7 @@ const emit = defineEmits<{
 
 const contentRef = ref<HTMLDivElement | null>(null);
 const lastText = ref(props.block.text);
+const isComposing = ref(false);
 
 const escapeHtml = (value: string): string => {
   return value
@@ -125,6 +128,9 @@ const getSelectionRange = (): { start: number; end: number } | null => {
 };
 
 const handleInput = (): void => {
+  if (isComposing.value) {
+    return;
+  }
   const nextText = contentRef.value?.textContent ?? "";
   const nextRuns = adjustRunsForTextChange(lastText.value, nextText, props.block.runs);
   lastText.value = nextText;
@@ -133,6 +139,11 @@ const handleInput = (): void => {
     text: nextText,
     runs: nextRuns
   });
+};
+
+const onCompositionEnd = (): void => {
+  isComposing.value = false;
+  handleInput();
 };
 
 const applyBold = (): void => {
@@ -184,6 +195,9 @@ onMounted(updateHtml);
 watch(
   () => [props.block.text, props.block.runs],
   () => {
+    if (isComposing.value) {
+      return;
+    }
     lastText.value = props.block.text;
     updateHtml();
   },
