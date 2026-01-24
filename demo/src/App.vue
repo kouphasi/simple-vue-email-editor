@@ -23,10 +23,10 @@
       <section class="editor-panel">
         <EmailEditor ref="editorRef" v-model="json" :on-image-upload="mockUpload" />
       </section>
-      <aside class="side-panel">
+      <section class="bottom-panel">
         <div class="panel-card">
           <h2>JSON State</h2>
-          <textarea v-model="json" spellcheck="false" rows="14"></textarea>
+          <textarea v-model="json" spellcheck="false" rows="12"></textarea>
         </div>
         <div class="panel-card">
           <h2>Notes</h2>
@@ -36,7 +36,7 @@
             <li>Drag blocks to reorder.</li>
           </ul>
         </div>
-      </aside>
+      </section>
     </main>
   </div>
 </template>
@@ -187,7 +187,7 @@ h1 {
 
 .demo-main {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  grid-template-columns: 1fr;
   gap: 24px;
   align-items: start;
 }
@@ -200,9 +200,9 @@ h1 {
   box-shadow: 0 16px 36px rgba(32, 27, 20, 0.08);
 }
 
-.side-panel {
-  display: flex;
-  flex-direction: column;
+.bottom-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -239,13 +239,13 @@ h1 {
 }
 
 @media (max-width: 980px) {
-  .demo-main {
-    grid-template-columns: 1fr;
-  }
-
   .header-actions {
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  .bottom-panel {
+    grid-template-columns: 1fr;
   }
 }
 </style>
