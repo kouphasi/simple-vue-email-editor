@@ -1,0 +1,45 @@
+{
+  "name": "email-editor",
+  "version": "0.1.0",
+  "description": "Block-based email editor library for Vue 2.7.",
+  "type": "module",
+  "main": "dist/email-editor.iife.js",
+  "module": "dist/email-editor.es.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.0",
+    "@typescript-eslint/parser": "^8.31.0",
+    "@vitejs/plugin-vue2": "^2.2.0",
+    "@vue/compiler-sfc": "^2.7.16",
+    "eslint": "^8.57.0",
+    "playwright": "^1.52.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2",
+    "vue": "^2.7.16"
+  },
+  "peerDependencies": {
+    "vue": "^2.7.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/email-editor.es.js",
+      "require": "./dist/email-editor.iife.js",
+      "types": "./dist/index.d.ts"
+    }
+  }
+}

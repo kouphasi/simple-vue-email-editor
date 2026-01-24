@@ -1,0 +1,16 @@
+node_modules/
+.git/
+.specify/
+.codex/
+.vscode/
+.idea/
+tests/
+specs/
+*.log
+.eslintrc.cjs
+.eslintignore
+.prettierrc
+.prettierignore
+vite.config.ts
+tsconfig.json
+.gitignore
