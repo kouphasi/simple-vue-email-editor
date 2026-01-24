@@ -87,13 +87,13 @@ import PreviewToggle from "./components/PreviewToggle.vue";
 
 const props = withDefaults(
   defineProps<{
-    modelValue?: string;
+    json?: string;
     document?: Document | null;
     previewMode?: PreviewMode;
     onImageUpload?: ImageUploadHandler;
   }>(),
   {
-    modelValue: undefined,
+    json: undefined,
     previewMode: "mobile",
     document: null,
     onImageUpload: undefined,
@@ -101,12 +101,13 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  (event: "update:modelValue", value: string): void;
+  (event: "update:json", value: string): void;
   (event: "change", value: Document): void;
   (event: "error", value: Error): void;
 }>();
 
 const { onImageUpload } = toRefs(props);
+const resolvedJson = computed(() => props.json);
 
 const createId = (): string => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -144,7 +145,7 @@ const setDocument = (next: Document, emitChanges: boolean): void => {
 
   if (emitChanges) {
     emit("change", next);
-    emit("update:modelValue", json);
+    emit("update:json", json);
   }
 };
 
@@ -170,8 +171,8 @@ const tryLoadJson = (value: string, emitChanges: boolean): void => {
 
 if (props.document) {
   tryLoadDocument(props.document, false);
-} else if (props.modelValue) {
-  tryLoadJson(props.modelValue, false);
+} else if (resolvedJson.value) {
+  tryLoadJson(resolvedJson.value, false);
 } else {
   setDocument(setPreviewMode(documentRef.value, props.previewMode), false);
 }
@@ -197,7 +198,7 @@ const handlePreviewChange = (mode: PreviewMode): void => {
 };
 
 watch(
-  () => props.modelValue,
+  () => resolvedJson.value,
   (value) => {
     if (props.document || !value || value === lastSerialized) {
       return;

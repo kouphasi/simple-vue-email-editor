@@ -17,6 +17,10 @@ import { ref } from "vue";
 
 const json = ref("");
 
+const handleJsonUpdate = (value: string) => {
+  json.value = value;
+};
+
 const handleImageUpload = async (file: File) => {
   const url = await uploadImage(file);
   return url;
@@ -24,14 +28,15 @@ const handleImageUpload = async (file: File) => {
 </script>
 
 <template>
-  <EmailEditor v-model="json" :on-image-upload="handleImageUpload" />
+  <EmailEditor :json="json" :on-image-upload="handleImageUpload" @update:json="handleJsonUpdate" />
 </template>
 ```
 
 ## Notes
 
-- `v-model` is a JSON string representation of the document.
-- You can pass a `document` object instead of `v-model` if you want to own state externally.
+- `json` is a JSON string representation of the document.
+- Use `update:json` to keep your local state in sync.
+- You can pass a `document` object instead of `json` if you want to own state externally; handle `change` to capture edits.
 
 ## Scripts
 

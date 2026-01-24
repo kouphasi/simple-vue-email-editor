@@ -21,7 +21,12 @@
 
     <main class="demo-main">
       <section class="editor-panel">
-        <EmailEditor ref="editorRef" v-model="json" :on-image-upload="mockUpload" />
+        <EmailEditor
+          ref="editorRef"
+          :json="json"
+          :on-image-upload="mockUpload"
+          @update:json="handleJsonUpdate"
+        />
       </section>
       <section class="bottom-panel">
         <div class="panel-card">
@@ -51,6 +56,10 @@ const json = ref("");
 
 const mockUpload = async (): Promise<string> => {
   return "https://placehold.jp/3ac11f/ffffff/150x150.png?text=%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E3%81%AE%E7%94%BB%E5%83%8F";
+};
+
+const handleJsonUpdate = (value: string): void => {
+  json.value = value;
 };
 
 const handleExportJson = (): void => {
