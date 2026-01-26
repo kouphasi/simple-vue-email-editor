@@ -28,6 +28,8 @@ export const setLayout = (document: Document, layout: LayoutSettings): Document 
   };
 };
 
+export const updateLayout = setLayout;
+
 export const setPreviewMode = (document: Document, mode: PreviewMode): Document => {
   return setLayout(document, createLayoutSettings(mode));
 };

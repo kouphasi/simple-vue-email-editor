@@ -62,3 +62,8 @@ export const PREVIEW_WIDTHS: Record<PreviewMode, PreviewWidthPx> = {
   mobile: 375,
   desktop: 640
 };
+
+export interface EditorState {
+  selectedBlockId: string | null;
+  isEditingText: boolean;
+}

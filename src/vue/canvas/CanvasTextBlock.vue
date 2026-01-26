@@ -1,43 +1,44 @@
 <template>
-  <div class="ee-block ee-block-text">
-    <div class="ee-text-toolbar">
-      <button type="button" class="ee-pill" @click="applyBold">Bold</button>
-      <input
-        class="ee-color"
-        type="color"
-        :value="currentColor"
-        @change="applyColorSelection"
-      />
-    </div>
+  <div class="ee-canvas-text-block" @click.stop="handleClick">
     <div
       ref="contentRef"
       class="ee-text-content"
-      contenteditable="true"
+      :contenteditable="isEditable"
       @input="handleInput"
       @compositionstart="isComposing = true"
       @compositionend="onCompositionEnd"
+      @keyup="updateSelection"
+      @mouseup="updateSelection"
+      @blur="updateSelection"
     ></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, nextTick } from "vue";
 import type { TextBlock } from "../../core/types";
 import { adjustRunsForTextChange, applyBoldToggle, applyColor } from "../../core/text_formatting";
 
 const props = defineProps<{
   block: TextBlock;
+  selected: boolean;
+  editing: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: "update", block: TextBlock): void;
+  (event: "edit"): void;
+  (event: "select"): void;
 }>();
 
 const contentRef = ref<HTMLDivElement | null>(null);
 const lastText = ref(props.block.text);
 const isComposing = ref(false);
 const pendingSelection = ref<{ start: number; end: number } | null>(null);
+const lastSelection = ref<{ start: number; end: number } | null>(null);
 const skipRender = ref<{ text: string; runsKey: string } | null>(null);
+
+const isEditable = computed(() => props.editing);
 
 const escapeHtml = (value: string): string => {
   return value
@@ -80,7 +81,7 @@ const renderTextWithRuns = (text: string, runs: TextBlock["runs"]): string => {
     }
 
     if (styles.length > 0) {
-      html += `<span style=\"${styles.join(";")}\">${content}</span>`;
+      html += `<span style="font-family: inherit; ${styles.join(";")}">${content}</span>`;
     } else {
       html += content;
     }
@@ -121,23 +122,18 @@ const getSelectionOffsets = (): { start: number; end: number } | null => {
   const startRange = range.cloneRange();
   startRange.selectNodeContents(contentRef.value);
   startRange.setEnd(range.startContainer, range.startOffset);
-  const start = startRange.toString().length;
+  let start = startRange.toString().length;
 
   const endRange = range.cloneRange();
   endRange.selectNodeContents(contentRef.value);
   endRange.setEnd(range.endContainer, range.endOffset);
-  const end = endRange.toString().length;
+  let end = endRange.toString().length;
+  
+  const textLength = props.block.text.length;
+  start = Math.min(start, textLength);
+  end = Math.min(end, textLength);
 
   return { start, end };
-};
-
-const getSelectionRange = (): { start: number; end: number } | null => {
-  const selection = getSelectionOffsets();
-  if (!selection || selection.start === selection.end) {
-    return null;
-  }
-
-  return selection;
 };
 
 const findPositionForOffset = (
@@ -174,9 +170,8 @@ const restoreSelection = (selection: { start: number; end: number }): void => {
 
   const doc = contentRef.value.ownerDocument;
   const active = doc.activeElement;
-  if (active !== contentRef.value) {
-    return;
-  }
+  
+  if (!props.editing) return;
 
   const textLength = props.block.text.length;
   const start = Math.min(Math.max(selection.start, 0), textLength);
@@ -197,6 +192,13 @@ const restoreSelection = (selection: { start: number; end: number }): void => {
   selectionState.addRange(range);
 };
 
+const updateSelection = () => {
+    const sel = getSelectionOffsets();
+    if (sel) {
+        lastSelection.value = sel;
+    }
+};
+
 const handleInput = (): void => {
   if (isComposing.value) {
     return;
@@ -205,8 +207,11 @@ const handleInput = (): void => {
   const nextRuns = adjustRunsForTextChange(lastText.value, nextText, props.block.runs);
   const nextRunsKey = runsKey(nextRuns);
   lastText.value = nextText;
-  pendingSelection.value = getSelectionOffsets();
+  
+  updateSelection();
+  pendingSelection.value = lastSelection.value;
   skipRender.value = { text: nextText, runsKey: nextRunsKey };
+  
   emit("update", {
     ...props.block,
     text: nextText,
@@ -219,11 +224,17 @@ const onCompositionEnd = (): void => {
   handleInput();
 };
 
-const applyBold = (): void => {
-  const selection = getSelectionRange();
-  if (!selection) {
-    return;
+const handleClick = () => {
+  if (!props.selected) {
+    emit("select");
+  } else if (!props.editing) {
+    emit("edit");
   }
+};
+
+const toggleBold = () => {
+  const selection = lastSelection.value;
+  if (!selection) return;
 
   const nextRuns = applyBoldToggle(
     props.block.text,
@@ -232,36 +243,31 @@ const applyBold = (): void => {
     selection.end
   );
 
+  pendingSelection.value = selection;
   emit("update", {
     ...props.block,
     runs: nextRuns
   });
 };
 
-const applyColorSelection = (event: Event): void => {
-  const selection = getSelectionRange();
-  if (!selection) {
-    return;
-  }
+const setColor = (color: string) => {
+  const selection = lastSelection.value;
+  if (!selection) return;
 
-  const input = event.target as HTMLInputElement;
   const nextRuns = applyColor(
     props.block.text,
     props.block.runs,
     selection.start,
     selection.end,
-    input.value
+    color
   );
 
+  pendingSelection.value = selection;
   emit("update", {
     ...props.block,
     runs: nextRuns
   });
 };
-
-const currentColor = computed(() => {
-  return props.block.runs.find((run) => run.color)?.color ?? "#000000";
-});
 
 onMounted(updateHtml);
 
@@ -274,6 +280,7 @@ watch(
     lastText.value = props.block.text;
     const currentRunsKey = runsKey(props.block.runs);
     if (
+      props.editing &&
       skipRender.value &&
       skipRender.value.text === props.block.text &&
       skipRender.value.runsKey === currentRunsKey
@@ -283,42 +290,42 @@ watch(
     }
     updateHtml();
     skipRender.value = null;
-    if (pendingSelection.value) {
+    if (pendingSelection.value && props.editing) {
       restoreSelection(pendingSelection.value);
       pendingSelection.value = null;
     }
   },
   { deep: true }
 );
+
+watch(() => props.editing, (newVal, oldVal) => {
+    if (newVal) {
+        nextTick(() => {
+            contentRef.value?.focus();
+            updateSelection();
+        });
+        return;
+    }
+    if (!newVal && oldVal) {
+        skipRender.value = null;
+        pendingSelection.value = null;
+        updateHtml();
+    }
+});
+
+defineExpose({
+    toggleBold,
+    setColor
+});
 </script>
 
 <style scoped>
-.ee-text-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+.ee-canvas-text-block {
+    outline: none;
 }
-
-.ee-pill {
-  border: 1px solid var(--ee-border);
-  background: #fff;
-  border-radius: 999px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.ee-color {
-  border: 1px solid var(--ee-border);
-  background: #fff;
-  border-radius: 8px;
-  padding: 4px;
-}
-
 .ee-text-content {
-  min-height: 80px;
-  padding: 8px;
-  border: 1px solid var(--ee-border);
-  border-radius: 8px;
+  min-height: 1.5em;
+  outline: none;
+  white-space: pre-wrap;
 }
 </style>

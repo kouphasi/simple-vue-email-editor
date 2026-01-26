@@ -5,58 +5,74 @@
         <div class="ee-toolbar-label">Add elements</div>
         <BlockPicker @add="handleAddBlock" />
       </div>
-      <div class="ee-toolbar-group">
-        <div class="ee-toolbar-label">Preview</div>
-        <div class="ee-preview-controls">
-          <PreviewToggle
-            :mode="editorDocument.layout.previewMode"
-            @change="handlePreviewChange"
-          />
-          <button
-            type="button"
-            class="ee-preview-button"
-            :class="{ 'is-active': showPreview }"
-            :aria-pressed="showPreview"
-            @click="showPreview = !showPreview"
-          >
-            {{ showPreview ? "Hide preview" : "Show preview" }}
-          </button>
-        </div>
+      
+      <div class="ee-toolbar-group ee-preview-actions">
+        <button
+          type="button"
+          class="ee-action-button"
+          @click="showFinalPreview = true"
+        >
+          👁️ Final Preview
+        </button>
+        <button
+          type="button"
+          class="ee-action-button"
+          @click="handleExportHtml"
+        >
+          Export HTML
+        </button>
       </div>
     </div>
-    <div class="ee-workspace" :class="{ 'is-preview-hidden': !showPreview }">
-      <div class="ee-panel">
-        <div class="ee-panel-header">
-          <div class="ee-panel-title">Editor</div>
-          <div class="ee-panel-meta">{{ editorDocument.layout.previewWidthPx }}px</div>
-        </div>
-        <div class="ee-panel-body">
-          <BlockList
-            :document="editorDocument"
-            :width-px="editorDocument.layout.previewWidthPx"
-            :on-image-upload="onImageUpload"
-            @update-block="handleUpdateBlock"
-            @delete-block="handleDeleteBlock"
-            @reorder="handleReorder"
-          />
-        </div>
+
+    <div class="ee-workspace">
+      <div class="ee-canvas-area" @click="handleCanvasAreaClick">
+        <EditorCanvas
+          ref="canvasRef"
+          :document="editorDocument"
+          :editor-state="editorState"
+          @update-block="handleUpdateBlock"
+          @delete-block="handleDeleteBlock"
+          @reorder="handleReorder"
+          @select-block="handleSelectBlock"
+          @set-editing="handleSetEditing"
+        />
       </div>
-      <div v-if="showPreview" class="ee-panel ee-panel-preview">
-        <div class="ee-panel-header">
-          <div class="ee-panel-title">Preview</div>
-          <div class="ee-panel-meta">{{ previewMeta }}</div>
+      
+      <div class="ee-sidebar-area">
+        <PropertiesSidebar
+          :document="editorDocument"
+          :editor-state="editorState"
+          :on-image-upload="onImageUpload"
+          @update-layout="handleUpdateLayout"
+          @update-block="handleUpdateBlock"
+          @select-block="handleSelectBlock"
+          @format-bold="handleFormatBold"
+          @format-color="handleFormatColor"
+        />
+      </div>
+    </div>
+
+    <!-- Final Preview Modal -->
+    <div v-if="showFinalPreview" class="ee-modal-overlay" @click="showFinalPreview = false">
+      <div class="ee-modal-content" @click.stop>
+        <div class="ee-modal-header">
+          <h3>Final Preview</h3>
+          <button class="ee-close-btn" @click="showFinalPreview = false">×</button>
         </div>
-        <div class="ee-panel-body">
-          <div
-            class="ee-preview-canvas"
-            :style="{ '--ee-preview-width': `${editorDocument.layout.previewWidthPx}px` }"
-          >
-            <iframe
-              class="ee-preview-frame"
-              :title="`Email preview (${editorDocument.layout.previewMode})`"
-              :srcdoc="previewHtml"
-            ></iframe>
-          </div>
+        <div class="ee-modal-body">
+           <div class="ee-preview-toolbar">
+              <PreviewToggle
+                :mode="previewMode"
+                @change="previewMode = $event"
+              />
+           </div>
+           <div class="ee-preview-container" :style="{ width: previewWidth }">
+              <iframe
+                class="ee-preview-frame"
+                :srcdoc="finalPreviewHtml"
+                title="Email Preview"
+              ></iframe>
+           </div>
         </div>
       </div>
     </div>
@@ -65,7 +81,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, toRefs } from "vue";
-import type { Block, Document, PreviewMode } from "../core/types";
+import type { Block, Document, PreviewMode, EditorState, LayoutSettings } from "../core/types";
 import type { ImageUploadHandler } from "../core/editor_api";
 import {
   addBlock,
@@ -73,7 +89,8 @@ import {
   deleteBlock,
   reorderBlocks,
   setPreviewMode,
-  updateBlock
+  updateBlock,
+  updateLayout
 } from "../services/document_service";
 import { exportHtml } from "../services/html_export";
 import { parseDocument } from "../services/json_import";
@@ -81,9 +98,10 @@ import { serializeDocument } from "../services/json_export";
 import { validateDocument } from "../services/json_validation";
 import { renderBlockHtml } from "../rendering/html_renderer";
 import { wrapEmailHtml } from "../rendering/html_templates";
-import BlockList from "./components/BlockList.vue";
 import BlockPicker from "./components/BlockPicker.vue";
 import PreviewToggle from "./components/PreviewToggle.vue";
+import EditorCanvas from "./canvas/EditorCanvas.vue";
+import PropertiesSidebar from "./sidebar/PropertiesSidebar.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -113,7 +131,6 @@ const createId = (): string => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
-
   return `doc_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 };
 
@@ -121,21 +138,25 @@ const documentRef = ref<Document>(createDocument(createId()));
 let lastSerialized = serializeDocument(documentRef.value);
 
 const editorDocument = computed(() => documentRef.value);
-const showPreview = ref(true);
 
-const buildPreviewHtml = (document: Document): string => {
-  const content = document.blocks.map(renderBlockHtml).join("");
-  const fallback =
-    "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#6f6357;\">Add a block to see a preview.</div>";
-  return wrapEmailHtml(content || fallback, document.layout.previewWidthPx, {
-    responsive: true
-  });
-};
+// Editor State
+const editorState = ref<EditorState>({
+  selectedBlockId: null,
+  isEditingText: false
+});
 
-const previewHtml = computed(() => buildPreviewHtml(editorDocument.value));
-const previewMeta = computed(() => {
-  const mode = editorDocument.value.layout.previewMode === "mobile" ? "Mobile" : "Desktop";
-  return `${mode} / ${editorDocument.value.layout.previewWidthPx}px`;
+const showFinalPreview = ref(false);
+const previewMode = ref<PreviewMode>("mobile");
+const canvasRef = ref<InstanceType<typeof EditorCanvas> | null>(null);
+
+const finalPreviewHtml = computed(() => {
+  const content = editorDocument.value.blocks.map(renderBlockHtml).join("");
+  const width = previewMode.value === "mobile" ? 375 : 640;
+  return wrapEmailHtml(content, width, { responsive: true });
+});
+
+const previewWidth = computed(() => {
+    return previewMode.value === "mobile" ? "375px" : "640px";
 });
 
 const setDocument = (next: Document, emitChanges: boolean): void => {
@@ -155,7 +176,6 @@ const tryLoadDocument = (next: Document, emitChanges: boolean): void => {
     emit("error", new Error(validation.errors.join("; ")));
     return;
   }
-
   setDocument(next, emitChanges);
 };
 
@@ -169,6 +189,7 @@ const tryLoadJson = (value: string, emitChanges: boolean): void => {
   }
 };
 
+// Initial load
 if (props.document) {
   tryLoadDocument(props.document, false);
 } else if (resolvedJson.value) {
@@ -177,8 +198,12 @@ if (props.document) {
   setDocument(setPreviewMode(documentRef.value, props.previewMode), false);
 }
 
+// Handlers
 const handleAddBlock = (block: Block): void => {
   setDocument(addBlock(documentRef.value, block), true);
+  // Auto-select the new block?
+  editorState.value.selectedBlockId = block.id;
+  editorState.value.isEditingText = false; // Add blocks usually don't start in edit mode unless we want to
 };
 
 const handleUpdateBlock = (block: Block): void => {
@@ -191,10 +216,48 @@ const handleReorder = (fromIndex: number, toIndex: number): void => {
 
 const handleDeleteBlock = (blockId: string): void => {
   setDocument(deleteBlock(documentRef.value, blockId), true);
+  if (editorState.value.selectedBlockId === blockId) {
+    editorState.value.selectedBlockId = null;
+  }
 };
 
-const handlePreviewChange = (mode: PreviewMode): void => {
-  setDocument(setPreviewMode(documentRef.value, mode), true);
+const handleUpdateLayout = (layout: LayoutSettings): void => {
+    setDocument(updateLayout(documentRef.value, layout), true);
+};
+
+const handleSelectBlock = (blockId: string | null): void => {
+  editorState.value.selectedBlockId = blockId;
+};
+
+const handleSetEditing = (isEditing: boolean): void => {
+  editorState.value.isEditingText = isEditing;
+};
+
+const handleCanvasAreaClick = (e: MouseEvent) => {
+    // If clicking the gray area outside canvas, deselect
+    if (e.target === e.currentTarget) {
+        editorState.value.selectedBlockId = null;
+        editorState.value.isEditingText = false;
+    }
+};
+
+const handleFormatBold = () => {
+    canvasRef.value?.toggleBold();
+};
+
+const handleFormatColor = (color: string) => {
+    canvasRef.value?.setColor(color);
+};
+
+const handleExportHtml = () => {
+    const html = exportHtml(documentRef.value);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "email.html";
+    a.click();
+    URL.revokeObjectURL(url);
 };
 
 watch(
@@ -203,7 +266,6 @@ watch(
     if (props.document || !value || value === lastSerialized) {
       return;
     }
-
     tryLoadJson(value, false);
   }
 );
@@ -211,18 +273,8 @@ watch(
 watch(
   () => props.document,
   (value) => {
-    if (!value) {
-      return;
-    }
-
+    if (!value) return;
     tryLoadDocument(value, false);
-  }
-);
-
-watch(
-  () => props.previewMode,
-  (value) => {
-    setDocument(setPreviewMode(documentRef.value, value), false);
   }
 );
 
@@ -231,7 +283,6 @@ defineExpose({
   loadDocument: (next: Document) => tryLoadDocument(next, true),
   exportJson: () => serializeDocument(documentRef.value),
   exportHtml: () => exportHtml(documentRef.value),
-  setPreviewMode: (mode: PreviewMode) => handlePreviewChange(mode)
 });
 </script>
 
@@ -242,177 +293,149 @@ defineExpose({
   --ee-font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
   --ee-font-display: "IBM Plex Serif", "Times New Roman", serif;
   --ee-text-color: #1c1915;
-  --ee-bg: #f4ede3;
-  --ee-surface: #fffaf2;
-  --ee-border: #e2d4c3;
-  --ee-muted: #6f6357;
+  --ee-bg: #f3f4f6;
+  --ee-surface: #ffffff;
+  --ee-border: #e5e7eb;
+  --ee-muted: #6b7280;
   --ee-primary: #0f766e;
-  --ee-primary-ink: #f6f1ea;
-  --ee-radius: 14px;
-  --ee-shadow: 0 8px 20px rgba(28, 24, 18, 0.1);
-  --ee-panel-shadow: 0 18px 40px rgba(28, 24, 18, 0.12);
-  --ee-control-bg: #fff2df;
-  --ee-control-border: #e0cfbb;
-  --ee-control-hover: #f5e2cd;
-  --ee-ring: rgba(15, 118, 110, 0.2);
-
+  
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-  background:
-    radial-gradient(120% 120% at 10% 0%, rgba(255, 255, 255, 0.82) 0%, rgba(244, 237, 227, 0.12) 60%),
-    linear-gradient(180deg, #f7f0e7 0%, #f1e7d8 100%);
+  height: 100vh;
+  background: var(--ee-bg);
   color: var(--ee-text-color);
   font-family: var(--ee-font-body);
 }
 
 .ee-toolbar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: var(--ee-surface);
+  border-bottom: 1px solid var(--ee-border);
 }
 
 .ee-toolbar-group {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid var(--ee-border);
-  background: var(--ee-surface);
-  box-shadow: var(--ee-shadow);
+  align-items: center;
+  gap: 16px;
 }
 
 .ee-toolbar-label {
-  font-family: var(--ee-font-display);
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ee-muted);
+    font-size: 14px;
+    font-weight: 600;
 }
 
-.ee-preview-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.ee-action-button {
+    background: white;
+    border: 1px solid var(--ee-border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
 }
-
-.ee-preview-button {
-  border: 1px solid var(--ee-control-border);
-  background: var(--ee-control-bg);
-  border-radius: 999px;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--ee-text-color);
-  transition:
-    transform 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    background 150ms ease,
-    color 150ms ease;
-}
-
-.ee-preview-button:hover {
-  border-color: var(--ee-primary);
-  transform: translateY(-1px);
-}
-
-.ee-preview-button:focus-visible {
-  outline: 2px solid var(--ee-ring);
-  outline-offset: 2px;
-}
-
-.ee-preview-button.is-active {
-  background: var(--ee-primary);
-  color: var(--ee-primary-ink);
-  border-color: var(--ee-primary);
-  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.28);
+.ee-action-button:hover {
+    background: #f9fafb;
 }
 
 .ee-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 16px;
-  align-items: start;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-.ee-workspace.is-preview-hidden {
-  grid-template-columns: minmax(0, 1fr);
+.ee-canvas-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  background: #f3f4f6;
+  cursor: default; /* Make sure clicking bg is possible */
 }
 
-.ee-panel {
+.ee-sidebar-area {
+  width: 320px;
+  border-left: 1px solid var(--ee-border);
   background: var(--ee-surface);
-  border: 1px solid var(--ee-border);
-  border-radius: 18px;
-  box-shadow: var(--ee-panel-shadow);
   display: flex;
   flex-direction: column;
-  min-height: 320px;
-  min-width: 0;
 }
 
-.ee-panel-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 12px 16px 4px;
-  border-bottom: 1px dashed rgba(28, 24, 18, 0.08);
+/* Modal */
+.ee-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 }
 
-.ee-panel-title {
-  font-family: var(--ee-font-display);
-  font-size: 16px;
-  letter-spacing: 0.04em;
+.ee-modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    width: 90vw;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.ee-panel-meta {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ee-muted);
+.ee-modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--ee-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.ee-panel-body {
-  padding: 12px 16px 16px;
-  overflow: auto;
-  min-width: 0;
+.ee-modal-header h3 {
+    margin: 0;
+    font-weight: 600;
 }
 
-.ee-preview-canvas {
-  --ee-preview-width: 640px;
-  display: grid;
-  justify-content: center;
-  align-items: start;
-  padding: 12px;
-  width: 100%;
-  box-sizing: border-box;
-  border-radius: 14px;
-  border: 1px dashed rgba(28, 24, 18, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(245, 236, 222, 0.6) 100%);
+.ee-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.ee-modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #f3f4f6;
+}
+
+.ee-preview-toolbar {
+    padding: 12px;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid var(--ee-border);
+    background: white;
+}
+
+.ee-preview-container {
+    flex: 1;
+    margin: 24px auto;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .ee-preview-frame {
-  width: var(--ee-preview-width);
-  max-width: 100%;
-  height: clamp(320px, 62vh, 760px);
-  border: 0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 16px 30px rgba(28, 24, 18, 0.18);
-}
-
-@media (max-width: 980px) {
-  .ee-toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .ee-workspace {
-    grid-template-columns: 1fr;
-  }
+    width: 100%;
+    height: 100%;
+    border: none;
 }
 </style>
