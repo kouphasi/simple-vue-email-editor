@@ -5,45 +5,50 @@
     :style="canvasStyle"
   >
     <div class="ee-canvas-content">
-      <CanvasBlock
+      <div
         v-for="(block, index) in document.blocks"
         :key="block.id"
-        :selected="selectedBlockId === block.id"
-        @dragstart="handleDragStart(block.id, $event)"
+        class="ee-block-wrapper"
+        :class="{
+          'is-dragging': draggingId === block.id,
+          'is-drag-over-top': dragOverId === block.id && dragOverPosition === 'top',
+          'is-drag-over-bottom': dragOverId === block.id && dragOverPosition === 'bottom'
+        }"
         @dragover.prevent="handleDragOver(block.id)"
         @dragleave="handleDragLeave(block.id)"
         @drop.prevent="handleDrop(block.id)"
-        @dragend="handleDragEnd"
-        @select="handleSelect(block.id)"
-        @delete="handleDelete(block.id)"
-        :class="{
-          'is-dragging': draggingId === block.id,
-          'is-drag-over': dragOverId === block.id
-        }"
       >
-        <CanvasTextBlock
-          v-if="block.type === 'text'"
-          :block="block"
+        <CanvasBlock
           :selected="selectedBlockId === block.id"
-          :editing="selectedBlockId === block.id && isEditingText"
-          :ref="(el) => setTextBlockRef(block.id, el)"
-          @update="handleUpdate(block.id, $event)"
-          @edit="handleEdit(block.id)"
+          @dragstart="handleDragStart(block.id, $event)"
+          @dragend="handleDragEnd"
           @select="handleSelect(block.id)"
-        />
-        <CanvasButtonBlock
-          v-else-if="block.type === 'button'"
-          :block="block"
-          :selected="selectedBlockId === block.id"
-          @select="handleSelect(block.id)"
-        />
-        <CanvasImageBlock
-          v-else-if="block.type === 'image'"
-          :block="block"
-          :selected="selectedBlockId === block.id"
-          @select="handleSelect(block.id)"
-        />
-      </CanvasBlock>
+          @delete="handleDelete(block.id)"
+        >
+          <CanvasTextBlock
+            v-if="block.type === 'text'"
+            :block="block"
+            :selected="selectedBlockId === block.id"
+            :editing="selectedBlockId === block.id && isEditingText"
+            :ref="(el) => setTextBlockRef(block.id, el)"
+            @update="handleUpdate(block.id, $event)"
+            @edit="handleEdit(block.id)"
+            @select="handleSelect(block.id)"
+          />
+          <CanvasButtonBlock
+            v-else-if="block.type === 'button'"
+            :block="block"
+            :selected="selectedBlockId === block.id"
+            @select="handleSelect(block.id)"
+          />
+          <CanvasImageBlock
+            v-else-if="block.type === 'image'"
+            :block="block"
+            :selected="selectedBlockId === block.id"
+            @select="handleSelect(block.id)"
+          />
+        </CanvasBlock>
+      </div>
       
       <div v-if="document.blocks.length === 0" class="ee-empty-state">
         Add a block from the toolbar to get started
@@ -77,6 +82,7 @@ const { selectedBlockId, isEditingText } = toRefs(props.editorState);
 
 const draggingId = ref<string | null>(null);
 const dragOverId = ref<string | null>(null);
+const dragOverPosition = ref<"top" | "bottom" | null>(null);
 const textBlockRefs = ref<Record<string, any>>({});
 
 const setTextBlockRef = (id: string, el: any) => {
@@ -165,11 +171,19 @@ const handleDragOver = (id: string) => {
     return;
   }
   dragOverId.value = id;
+  const fromIndex = props.document.blocks.findIndex((b) => b.id === draggingId.value);
+  const toIndex = props.document.blocks.findIndex((b) => b.id === id);
+  if (fromIndex < 0 || toIndex < 0) {
+    dragOverPosition.value = null;
+    return;
+  }
+  dragOverPosition.value = fromIndex < toIndex ? "bottom" : "top";
 };
 
 const handleDragLeave = (id: string) => {
   if (dragOverId.value === id) {
     dragOverId.value = null;
+    dragOverPosition.value = null;
   }
 };
 
@@ -185,6 +199,7 @@ const handleDrop = (id: string) => {
 
   draggingId.value = null;
   dragOverId.value = null;
+  dragOverPosition.value = null;
 
   if (fromIndex >= 0 && toIndex >= 0) {
     emit("reorder", fromIndex, toIndex);
@@ -194,6 +209,7 @@ const handleDrop = (id: string) => {
 const handleDragEnd = () => {
   draggingId.value = null;
   dragOverId.value = null;
+  dragOverPosition.value = null;
 };
 </script>
 
@@ -220,7 +236,11 @@ const handleDragEnd = () => {
   opacity: 0.5;
 }
 
-.is-drag-over {
+.is-drag-over-top {
   border-top: 2px solid #2563eb;
+}
+
+.is-drag-over-bottom {
+  border-bottom: 2px solid #2563eb;
 }
 </style>

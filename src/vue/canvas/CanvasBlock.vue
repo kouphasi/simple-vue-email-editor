@@ -5,7 +5,12 @@
     @click.stop="$emit('select')"
   >
     <div class="ee-block-controls" v-if="selected">
-      <div class="ee-drag-handle" draggable="true" @dragstart="$emit('dragstart', $event)">
+      <div
+        class="ee-drag-handle"
+        draggable="true"
+        @dragstart="$emit('dragstart', $event)"
+        @dragend="$emit('dragend', $event)"
+      >
         ⋮⋮
       </div>
       <button class="ee-delete-btn" @click.stop="$emit('delete')">×</button>
@@ -23,6 +28,7 @@ defineEmits<{
   (event: "select"): void;
   (event: "delete"): void;
   (event: "dragstart", e: DragEvent): void;
+  (event: "dragend", e: DragEvent): void;
 }>();
 </script>
 
