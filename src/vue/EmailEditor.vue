@@ -103,20 +103,12 @@ import PreviewToggle from "./components/PreviewToggle.vue";
 import EditorCanvas from "./canvas/EditorCanvas.vue";
 import PropertiesSidebar from "./sidebar/PropertiesSidebar.vue";
 
-const props = withDefaults(
-  defineProps<{
-    json?: string;
-    document?: Document | null;
-    previewMode?: PreviewMode;
-    onImageUpload?: ImageUploadHandler;
-  }>(),
-  {
-    json: undefined,
-    previewMode: "mobile",
-    document: null,
-    onImageUpload: undefined,
-  }
-);
+const props = defineProps<{
+  json?: string;
+  document?: Document | null;
+  previewMode?: PreviewMode;
+  onImageUpload?: ImageUploadHandler;
+}>();
 
 const emit = defineEmits<{
   (event: "update:json", value: string): void;
@@ -126,6 +118,7 @@ const emit = defineEmits<{
 
 const { onImageUpload } = toRefs(props);
 const resolvedJson = computed(() => props.json);
+const previewModeProp = computed<PreviewMode>(() => props.previewMode ?? "mobile");
 
 const createId = (): string => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -146,8 +139,17 @@ const editorState = ref<EditorState>({
 });
 
 const showFinalPreview = ref(false);
-const previewMode = ref<PreviewMode>("mobile");
 const canvasRef = ref<InstanceType<typeof EditorCanvas> | null>(null);
+
+const previewMode = computed<PreviewMode>({
+  get: () => editorDocument.value.layout.previewMode,
+  set: (mode) => {
+    if (editorDocument.value.layout.previewMode === mode) {
+      return;
+    }
+    setDocument(setPreviewMode(documentRef.value, mode), true);
+  }
+});
 
 const finalPreviewHtml = computed(() => {
   const content = editorDocument.value.blocks.map(renderBlockHtml).join("");
@@ -195,7 +197,7 @@ if (props.document) {
 } else if (resolvedJson.value) {
   tryLoadJson(resolvedJson.value, false);
 } else {
-  setDocument(setPreviewMode(documentRef.value, props.previewMode), false);
+  setDocument(setPreviewMode(documentRef.value, previewModeProp.value), false);
 }
 
 // Handlers
@@ -275,6 +277,19 @@ watch(
   (value) => {
     if (!value) return;
     tryLoadDocument(value, false);
+  }
+);
+
+watch(
+  () => props.previewMode,
+  (mode) => {
+    if (!mode) {
+      return;
+    }
+    if (documentRef.value.layout.previewMode === mode) {
+      return;
+    }
+    setDocument(setPreviewMode(documentRef.value, mode), false);
   }
 );
 
