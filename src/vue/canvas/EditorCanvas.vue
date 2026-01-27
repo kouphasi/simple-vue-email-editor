@@ -30,7 +30,7 @@
             :block="block"
             :selected="selectedBlockId === block.id"
             :editing="selectedBlockId === block.id && isEditingText"
-            :ref="(el) => setTextBlockRef(block.id, el)"
+            :ref="makeTextBlockRef(block.id)"
             @update="handleUpdate(block.id, $event)"
             @edit="handleEdit(block.id)"
             @select="handleSelect(block.id)"
@@ -83,12 +83,26 @@ const { selectedBlockId, isEditingText } = toRefs(props.editorState);
 const draggingId = ref<string | null>(null);
 const dragOverId = ref<string | null>(null);
 const dragOverPosition = ref<"top" | "bottom" | null>(null);
-const textBlockRefs = ref<Record<string, any>>({});
+type TextBlockHandle = {
+  toggleBold: () => void;
+  setColor: (color: string) => void;
+};
 
-const setTextBlockRef = (id: string, el: any) => {
-  if (el) {
-    textBlockRefs.value[id] = el;
+const textBlockRefs = ref<Record<string, TextBlockHandle>>({});
+
+const setTextBlockRef = (id: string, el: unknown) => {
+  if (
+    el &&
+    typeof el === "object" &&
+    "toggleBold" in el &&
+    "setColor" in el
+  ) {
+    textBlockRefs.value[id] = el as TextBlockHandle;
   }
+};
+
+const makeTextBlockRef = (id: string) => (el: unknown) => {
+  setTextBlockRef(id, el);
 };
 
 onBeforeUpdate(() => {
