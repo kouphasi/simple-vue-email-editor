@@ -2,6 +2,7 @@ import {
   Block,
   ButtonBlock,
   Document,
+  HtmlBlock,
   ImageBlock,
   LayoutSettings,
   TextBlock
@@ -62,6 +63,16 @@ const validateImageBlock = (block: ImageBlock): string[] => {
   return errors;
 };
 
+const validateHtmlBlock = (block: HtmlBlock): string[] => {
+  const errors: string[] = [];
+
+  if (typeof block.content !== "string") {
+    errors.push(`Invalid html content in block ${block.id}`);
+  }
+
+  return errors;
+};
+
 const validateBlock = (block: Block): string[] => {
   switch (block.type) {
     case "text":
@@ -70,6 +81,8 @@ const validateBlock = (block: Block): string[] => {
       return validateButtonBlock(block);
     case "image":
       return validateImageBlock(block);
+    case "html":
+      return validateHtmlBlock(block);
     default:
       return [`Unknown block type for block ${(block as Block).id}`];
   }
