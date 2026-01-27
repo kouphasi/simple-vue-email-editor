@@ -1,5 +1,5 @@
 <template>
-  <div class="ee-canvas-button-block" @click.stop="$emit('select')">
+  <div class="ee-canvas-button-block" :style="containerStyle" @click.stop="$emit('select')">
     <a
       :href="block.url"
       class="ee-button-element"
@@ -23,6 +23,12 @@ const props = defineProps<{
 defineEmits<{
   (event: "select"): void;
 }>();
+
+const containerStyle = computed(() => {
+  return {
+    textAlign: props.block.align ?? "left"
+  };
+});
 
 const buttonStyle = computed(() => {
   const radius =

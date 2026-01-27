@@ -1,5 +1,5 @@
 <template>
-  <div class="ee-canvas-text-block" @click.stop="handleClick">
+  <div class="ee-canvas-text-block" :style="containerStyle" @click.stop="handleClick">
     <div
       ref="contentRef"
       class="ee-text-content"
@@ -39,6 +39,12 @@ const lastSelection = ref<{ start: number; end: number } | null>(null);
 const skipRender = ref<{ text: string; runsKey: string } | null>(null);
 
 const isEditable = computed(() => props.editing);
+
+const containerStyle = computed(() => {
+  return {
+    textAlign: props.block.align ?? "left"
+  };
+});
 
 const escapeHtml = (value: string): string => {
   return value

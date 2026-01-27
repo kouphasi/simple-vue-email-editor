@@ -51,11 +51,13 @@ const renderTextRuns = (text: string, runs: TextBlock["runs"]): string => {
 };
 
 const renderTextBlock = (block: TextBlock): string => {
+  const align = block.align ?? "left";
   const content = renderTextRuns(block.text, block.runs);
-  return `<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b1b1b;margin:0 0 12px 0;\">${content}</div>`;
+  return `<div style=\"text-align:${align};font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b1b1b;margin:0 0 12px 0;\">${content}</div>`;
 };
 
 const renderButtonBlock = (block: ButtonBlock): string => {
+  const align = block.align ?? "left";
   const radius = block.shape === "pill" ? 999 : block.shape === "rounded" ? 8 : 0;
   const label = escapeHtml(block.label);
   const styles = [
@@ -69,7 +71,7 @@ const renderButtonBlock = (block: ButtonBlock): string => {
     "padding:12px 20px"
   ];
 
-  return `<div style=\"margin:0 0 16px 0;\"><a href=\"${block.url}\" style=\"${styles.join(
+  return `<div style=\"text-align:${align};margin:0 0 16px 0;\"><a href=\"${block.url}\" style=\"${styles.join(
     ";"
   )}\">${label}</a></div>`;
 };

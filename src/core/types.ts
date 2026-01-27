@@ -29,6 +29,7 @@ export interface TextBlock extends BlockBase {
   type: "text";
   text: string;
   runs: TextRun[];
+  align?: BlockAlign;
 }
 
 export type ButtonShape = "square" | "rounded" | "pill";
@@ -40,10 +41,12 @@ export interface ButtonBlock extends BlockBase {
   shape: ButtonShape;
   textColor: string;
   backgroundColor: string;
+  align?: BlockAlign;
 }
 
 export type ImageStatus = "pending" | "ready" | "uploading" | "error";
-export type ImageAlign = "left" | "center" | "right";
+export type BlockAlign = "left" | "center" | "right";
+export type ImageAlign = BlockAlign;
 
 export interface ImageBlock extends BlockBase {
   type: "image";
@@ -52,7 +55,7 @@ export interface ImageBlock extends BlockBase {
   display: {
     widthPx?: number;
     heightPx?: number;
-    align?: ImageAlign;
+    align?: BlockAlign;
   };
 }
 

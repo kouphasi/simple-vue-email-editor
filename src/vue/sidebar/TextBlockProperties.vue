@@ -24,25 +24,60 @@
           </div>
         </div>
       </div>
+
+      <div class="ee-control-group">
+        <label>Alignment</label>
+        <div class="ee-align-options">
+          <button
+            type="button"
+            :class="{ active: (block.align || 'left') === 'left' }"
+            @click="updateAlign('left')"
+          >
+            Left
+          </button>
+          <button
+            type="button"
+            :class="{ active: (block.align || 'left') === 'center' }"
+            @click="updateAlign('center')"
+          >
+            Center
+          </button>
+          <button
+            type="button"
+            :class="{ active: (block.align || 'left') === 'right' }"
+            @click="updateAlign('right')"
+          >
+            Right
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { TextBlock } from "../../core/types";
+import type { BlockAlign, TextBlock } from "../../core/types";
 
-defineProps<{
+const props = defineProps<{
   block: TextBlock;
 }>();
 
 const emit = defineEmits<{
   (event: "format-bold"): void;
   (event: "format-color", color: string): void;
+  (event: "update", block: TextBlock): void;
 }>();
 
 const handleColorChange = (event: Event) => {
   const input = event.target as HTMLInputElement;
   emit("format-color", input.value);
+};
+
+const updateAlign = (align: BlockAlign) => {
+  emit("update", {
+    ...props.block,
+    align
+  });
 };
 </script>
 
@@ -122,5 +157,33 @@ const handleColorChange = (event: Event) => {
   height: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+.ee-align-options {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ee-align-options button {
+  flex: 1;
+  border: none;
+  background: #fff;
+  padding: 6px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #4b5563;
+  border-right: 1px solid #e5e7eb;
+}
+
+.ee-align-options button:last-child {
+  border-right: none;
+}
+
+.ee-align-options button.active {
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 500;
 }
 </style>

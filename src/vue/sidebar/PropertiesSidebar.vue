@@ -21,6 +21,7 @@
       <TextBlockProperties
         v-else-if="selectedBlock.type === 'text'"
         :block="selectedBlock"
+        @update="$emit('update-block', $event)"
         @format-bold="$emit('format-bold')"
         @format-color="$emit('format-color', $event)"
       />
