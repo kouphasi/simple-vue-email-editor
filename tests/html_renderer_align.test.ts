@@ -30,5 +30,18 @@ describe("html renderer alignment", () => {
     const html = renderBlockHtml(block);
     expect(html).toContain("text-align:right");
   });
-});
 
+  it("sanitizes unexpected alignment values", () => {
+    const block: TextBlock = {
+      id: "text-align-unsafe-1",
+      type: "text",
+      text: "Hello",
+      runs: [],
+      align: 'center";color:red' as unknown as TextBlock["align"]
+    };
+
+    const html = renderBlockHtml(block);
+    expect(html).toContain("text-align:left");
+    expect(html).not.toContain('color:red');
+  });
+});

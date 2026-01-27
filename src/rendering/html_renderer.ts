@@ -1,4 +1,4 @@
-import { Block, ButtonBlock, ImageBlock, TextBlock, HtmlBlock } from "../core/types";
+import { Block, BlockAlign, ButtonBlock, ImageBlock, TextBlock, HtmlBlock } from "../core/types";
 
 const escapeHtml = (value: string): string => {
   return value
@@ -7,6 +7,16 @@ const escapeHtml = (value: string): string => {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+};
+
+const BLOCK_ALIGNS: BlockAlign[] = ["left", "center", "right"];
+
+const sanitizeAlign = (align: string | undefined, fallback: BlockAlign): BlockAlign => {
+  if (!align) {
+    return fallback;
+  }
+
+  return BLOCK_ALIGNS.includes(align as BlockAlign) ? (align as BlockAlign) : fallback;
 };
 
 const renderTextRuns = (text: string, runs: TextBlock["runs"]): string => {
@@ -51,13 +61,13 @@ const renderTextRuns = (text: string, runs: TextBlock["runs"]): string => {
 };
 
 const renderTextBlock = (block: TextBlock): string => {
-  const align = block.align ?? "left";
+  const align = sanitizeAlign(block.align, "left");
   const content = renderTextRuns(block.text, block.runs);
   return `<div style=\"text-align:${align};font-family:Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1b1b1b;margin:0 0 12px 0;\">${content}</div>`;
 };
 
 const renderButtonBlock = (block: ButtonBlock): string => {
-  const align = block.align ?? "left";
+  const align = sanitizeAlign(block.align, "left");
   const radius = block.shape === "pill" ? 999 : block.shape === "rounded" ? 8 : 0;
   const label = escapeHtml(block.label);
   const styles = [
@@ -77,7 +87,7 @@ const renderButtonBlock = (block: ButtonBlock): string => {
 };
 
 const renderImageBlock = (block: ImageBlock): string => {
-  const align = block.display.align ?? "center";
+  const align = sanitizeAlign(block.display.align, "center");
   const width = block.display.widthPx ? `width:${block.display.widthPx}px;` : "";
   const height = block.display.heightPx ? `height:${block.display.heightPx}px;` : "";
   const styles = ["display:block", "border:0", width, height].filter(Boolean).join("");

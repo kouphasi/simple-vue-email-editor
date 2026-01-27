@@ -1,5 +1,6 @@
 import {
   Block,
+  BlockAlign,
   ButtonBlock,
   Document,
   HtmlBlock,
@@ -8,6 +9,12 @@ import {
   TextBlock
 } from "../core/types";
 import { areTextRunsValid, isValidHexColor, isValidHttpUrl } from "../core/validation";
+
+const BLOCK_ALIGNS: BlockAlign[] = ["left", "center", "right"];
+
+const isBlockAlignValid = (align: BlockAlign | undefined): boolean => {
+  return align == null || BLOCK_ALIGNS.includes(align);
+};
 
 const isLayoutValid = (layout: LayoutSettings): boolean => {
   return (
@@ -30,6 +37,10 @@ const validateTextBlock = (block: TextBlock): string[] => {
     }
   }
 
+  if (!isBlockAlignValid(block.align)) {
+    errors.push(`Invalid text alignment in block ${block.id}`);
+  }
+
   return errors;
 };
 
@@ -42,6 +53,10 @@ const validateButtonBlock = (block: ButtonBlock): string[] => {
 
   if (!isValidHexColor(block.textColor) || !isValidHexColor(block.backgroundColor)) {
     errors.push(`Invalid button color in block ${block.id}`);
+  }
+
+  if (!isBlockAlignValid(block.align)) {
+    errors.push(`Invalid button alignment in block ${block.id}`);
   }
 
   return errors;
@@ -58,6 +73,10 @@ const validateImageBlock = (block: ImageBlock): string[] => {
 
   if (!IMAGE_STATUSES.includes(block.status)) {
     errors.push(`Invalid image status in block ${block.id}`);
+  }
+
+  if (!isBlockAlignValid(block.display.align)) {
+    errors.push(`Invalid image alignment in block ${block.id}`);
   }
 
   return errors;
