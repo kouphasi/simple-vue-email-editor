@@ -72,7 +72,7 @@
 
 <script setup lang="ts">
 import { computed, ref, toRefs, onBeforeUpdate } from "vue";
-import type { Block, Document, EditorState } from "../../core/types";
+import type { Block, CustomBlockInstance, Document, EditorState } from "../../core/types";
 import CanvasBlock from "./CanvasBlock.vue";
 import CanvasTextBlock from "./CanvasTextBlock.vue";
 import CanvasButtonBlock from "./CanvasButtonBlock.vue";
@@ -249,9 +249,9 @@ const handleDragEnd = () => {
   dragOverPosition.value = null;
 };
 
-const resolveCustomBlock = (block: Block): Block => {
+const resolveCustomBlock = (block: Block): CustomBlockInstance => {
   if (block.type !== "custom") {
-    return block;
+    throw new Error("resolveCustomBlock called with non-custom block");
   }
 
   const resolved = resolveCustomBlockState(block);

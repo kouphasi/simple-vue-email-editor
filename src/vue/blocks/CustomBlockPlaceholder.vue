@@ -7,10 +7,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type { CustomBlockState } from "../../core/types";
 
 const props = defineProps<{
   definitionId: string;
-  state: "missing-definition" | "invalid";
+  state: CustomBlockState;
 }>();
 
 const title = computed(() =>

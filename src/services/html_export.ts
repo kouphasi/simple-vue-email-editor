@@ -1,7 +1,8 @@
 import {
   CustomBlockDefinition,
   CustomBlockInstance,
-  Document
+  Document,
+  ValidationResult
 } from "../core/types";
 import { getCustomBlockDefinition } from "../core/custom_block_registry";
 import { validateSettingsSchema } from "../core/custom_block_validation";
@@ -101,7 +102,7 @@ const resolveCustomBlockForExport = (block: CustomBlockInstance): CustomBlockIns
   const mergedConfig = deepMerge(baseConfig, block.config) as Record<string, unknown>;
 
   const schemaValidation = validateSettingsSchema(definition.settingsSchema, mergedConfig);
-  let definitionValidation = { ok: true, missingFields: [], errors: [] as typeof schemaValidation.errors };
+  let definitionValidation: ValidationResult = { ok: true, missingFields: [], errors: [] };
   try {
     definitionValidation = definition.validate(mergedConfig);
   } catch {

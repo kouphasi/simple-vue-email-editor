@@ -16,7 +16,7 @@
 
     <CustomBlockValidationSummary
       :missing-fields="validation.missingFields"
-      :errors="validation.errors"
+      :errors="validation.errors ?? []"
     />
   </div>
 </template>
