@@ -28,15 +28,49 @@
     >
       Add HTML
     </button>
+
+    <div v-if="customBlockGroups.length" class="ee-custom-blocks">
+      <div
+        v-for="group in customBlockGroups"
+        :key="group.category"
+        class="ee-custom-block-group"
+      >
+        <div class="ee-custom-block-title">{{ group.category }}</div>
+        <div class="ee-custom-block-actions">
+          <button
+            v-for="definition in group.blocks"
+            :key="definition.id"
+            type="button"
+            class="ee-pill ee-pill--custom"
+            @click="addCustomBlock(definition)"
+          >
+            Add {{ definition.displayName }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Block, ButtonBlock, ImageBlock, TextBlock, HtmlBlock } from "../../core/types";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import type {
+  Block,
+  ButtonBlock,
+  CustomBlockDefinition,
+  HtmlBlock,
+  ImageBlock,
+  TextBlock
+} from "../../core/types";
+import { subscribeCustomBlockDefinitions } from "../../core/custom_block_registry";
+import { createCustomBlockInstance } from "../../services/document_service";
 
 const emit = defineEmits<{
   (event: "add", block: Block): void;
 }>();
+
+const customBlocks = ref<CustomBlockDefinition[]>([]);
+let unsubscribe: (() => void) | null = null;
 
 const createId = (): string => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -94,6 +128,38 @@ const addImage = (): void => {
 const addHtml = (): void => {
   emit("add", createHtmlBlock());
 };
+
+const addCustomBlock = (definition: CustomBlockDefinition): void => {
+  emit("add", createCustomBlockInstance(definition.id));
+};
+
+const customBlockGroups = computed(() => {
+  const grouped = new Map<string, CustomBlockDefinition[]>();
+  for (const definition of customBlocks.value) {
+    const category = definition.category?.trim() || "Uncategorized";
+    const items = grouped.get(category);
+    if (items) {
+      items.push(definition);
+    } else {
+      grouped.set(category, [definition]);
+    }
+  }
+
+  return [...grouped.entries()].map(([category, blocks]) => ({ category, blocks }));
+});
+
+onMounted(() => {
+  unsubscribe = subscribeCustomBlockDefinitions((definitions) => {
+    customBlocks.value = definitions;
+  });
+});
+
+onBeforeUnmount(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  unsubscribe = null;
+});
 </script>
 
 <style scoped>
@@ -101,6 +167,7 @@ const addHtml = (): void => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: flex-start;
 }
 
 .ee-pill {
@@ -131,5 +198,39 @@ const addHtml = (): void => {
 .ee-pill:focus-visible {
   outline: 2px solid var(--ee-ring);
   outline-offset: 2px;
+}
+
+.ee-pill--custom {
+  border-style: dashed;
+}
+
+.ee-custom-blocks {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ee-custom-block-group {
+  border: 1px dashed var(--ee-border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--ee-control-bg);
+}
+
+.ee-custom-block-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ee-muted);
+  margin-bottom: 6px;
+}
+
+.ee-custom-block-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

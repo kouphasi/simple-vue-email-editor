@@ -16,7 +16,12 @@
       @dragend="handleDragEnd"
     >
       <div class="ee-block-item-header">
-        <span class="ee-block-item-label">{{ getBlockLabel(block) }}</span>
+        <span class="ee-block-item-label">
+          {{ getBlockLabel(block) }}
+          <span v-if="block.type === 'custom'" class="ee-block-item-category">
+            {{ getCustomCategory(block) }}
+          </span>
+        </span>
         <button
           type="button"
           class="ee-block-item-delete"
@@ -34,19 +39,33 @@
         @update="emitUpdate"
       />
       <HtmlBlock v-else-if="block.type === 'html'" :block="block" @update="emitUpdate" />
+      <template v-else-if="block.type === 'custom'">
+        <CustomBlockPlaceholder
+          v-if="resolveCustomBlock(block).state !== 'ready'"
+          :definition-id="block.definitionId"
+          :state="resolveCustomBlock(block).state"
+        />
+        <CustomBlock v-else :block="resolveCustomBlock(block)" />
+      </template>
       <div v-else class="ee-unknown">Unsupported block</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import type { Block, Document } from "../../core/types";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import type { Block, CustomBlockDefinition, CustomBlockInstance, Document } from "../../core/types";
 import type { ImageUploadHandler } from "../../core/editor_api";
+import {
+  resolveCustomBlockState,
+  subscribeCustomBlockDefinitions
+} from "../../core/custom_block_registry";
 import TextBlock from "../blocks/TextBlock.vue";
 import ButtonBlock from "../blocks/ButtonBlock.vue";
 import ImageBlock from "../blocks/ImageBlock.vue";
 import HtmlBlock from "../blocks/HtmlBlock.vue";
+import CustomBlock from "../blocks/CustomBlock.vue";
+import CustomBlockPlaceholder from "../blocks/CustomBlockPlaceholder.vue";
 
 const props = defineProps<{
   document: Document;
@@ -62,6 +81,8 @@ const emit = defineEmits<{
 
 const draggingId = ref<string | null>(null);
 const dragOverId = ref<string | null>(null);
+const customDefinitions = ref<Map<string, CustomBlockDefinition>>(new Map());
+let unsubscribe: (() => void) | null = null;
 
 const emitUpdate = (block: Block): void => {
   emit("update-block", block);
@@ -77,9 +98,27 @@ const getBlockLabel = (block: Block): string => {
       return "Image block";
     case "html":
       return "HTML block";
+    case "custom": {
+      const definition = customDefinitions.value.get(block.definitionId);
+      return definition?.displayName ?? "Custom block";
+    }
     default:
       return "Block";
   }
+};
+
+const getCustomCategory = (block: CustomBlockInstance): string => {
+  const definition = customDefinitions.value.get(block.definitionId);
+  return definition?.category?.trim() || "Uncategorized";
+};
+
+const resolveCustomBlock = (block: CustomBlockInstance): CustomBlockInstance => {
+  const resolved = resolveCustomBlockState(block);
+  return {
+    ...block,
+    state: resolved.state,
+    readOnly: resolved.readOnly
+  };
 };
 
 const handleDelete = (blockId: string): void => {
@@ -128,6 +167,21 @@ const handleDragEnd = (): void => {
   draggingId.value = null;
   dragOverId.value = null;
 };
+
+onMounted(() => {
+  unsubscribe = subscribeCustomBlockDefinitions((definitions) => {
+    customDefinitions.value = new Map(
+      definitions.map((definition) => [definition.id, definition])
+    );
+  });
+});
+
+onBeforeUnmount(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  unsubscribe = null;
+});
 </script>
 
 <style scoped>
@@ -167,6 +221,14 @@ const handleDragEnd = (): void => {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ee-muted);
+}
+
+.ee-block-item-category {
+  margin-left: 6px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.03em;
+  color: var(--ee-text-color);
 }
 
 .ee-block-item-delete {

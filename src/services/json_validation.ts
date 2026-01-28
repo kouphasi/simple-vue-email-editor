@@ -2,12 +2,16 @@ import {
   Block,
   BlockAlign,
   ButtonBlock,
+  CustomBlockDefinition,
+  CustomBlockInstance,
   Document,
   HtmlBlock,
   ImageBlock,
   LayoutSettings,
   TextBlock
 } from "../core/types";
+import { getCustomBlockDefinition } from "../core/custom_block_registry";
+import { validateSettingsSchema } from "../core/custom_block_validation";
 import { areTextRunsValid, isValidHexColor, isValidHttpUrl } from "../core/validation";
 
 const BLOCK_ALIGNS: BlockAlign[] = ["left", "center", "right"];
@@ -92,6 +96,102 @@ const validateHtmlBlock = (block: HtmlBlock): string[] => {
   return errors;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+const deepMerge = (base: unknown, overrides: unknown): unknown => {
+  if (Array.isArray(base) || Array.isArray(overrides)) {
+    return overrides !== undefined ? overrides : base;
+  }
+
+  if (isPlainObject(base) && isPlainObject(overrides)) {
+    const merged: Record<string, unknown> = { ...base };
+    for (const [key, value] of Object.entries(overrides)) {
+      merged[key] = deepMerge(base[key], value);
+    }
+    return merged;
+  }
+
+  return overrides !== undefined ? overrides : base;
+};
+
+const buildSchemaDefaults = (definition: CustomBlockDefinition): Record<string, unknown> => {
+  const defaults: Record<string, unknown> = {};
+  for (const field of definition.settingsSchema.fields) {
+    if (field.default !== undefined) {
+      defaults[field.key] = field.default;
+    }
+  }
+  return defaults;
+};
+
+const validateCustomBlock = (block: CustomBlockInstance): string[] => {
+  const errors: string[] = [];
+
+  if (!block.definitionId || typeof block.definitionId !== "string") {
+    errors.push(`Custom block ${block.id} is missing a definitionId`);
+  }
+
+  if (!isPlainObject(block.config)) {
+    errors.push(`Custom block ${block.id} has invalid config payload`);
+  }
+
+  if (block.state !== "ready" && block.state !== "invalid" && block.state !== "missing-definition") {
+    errors.push(`Custom block ${block.id} has invalid state`);
+  }
+
+  if (typeof block.readOnly !== "boolean") {
+    errors.push(`Custom block ${block.id} has invalid readOnly flag`);
+  }
+
+  const definition = block.definitionId
+    ? getCustomBlockDefinition(block.definitionId)
+    : undefined;
+
+  if (!definition) {
+    return errors;
+  }
+
+  const baseConfig = deepMerge(
+    buildSchemaDefaults(definition),
+    definition.defaultConfig
+  ) as Record<string, unknown>;
+  const mergedConfig = deepMerge(baseConfig, block.config) as Record<string, unknown>;
+
+  const schemaValidation = validateSettingsSchema(definition.settingsSchema, mergedConfig);
+  if (!schemaValidation.ok) {
+    if (schemaValidation.missingFields.length > 0) {
+      errors.push(
+        `Custom block ${block.id} missing required fields: ${schemaValidation.missingFields.join(", ")}`
+      );
+    }
+    for (const issue of schemaValidation.errors ?? []) {
+      errors.push(`Custom block ${block.id} field ${issue.field}: ${issue.message}`);
+    }
+  }
+
+  try {
+    const definitionValidation = definition.validate(mergedConfig);
+    if (!definitionValidation.ok) {
+      if (definitionValidation.missingFields.length > 0) {
+        errors.push(
+          `Custom block ${block.id} missing required fields: ${definitionValidation.missingFields.join(", ")}`
+        );
+      }
+      for (const issue of definitionValidation.errors ?? []) {
+        errors.push(`Custom block ${block.id} field ${issue.field}: ${issue.message}`);
+      }
+    }
+  } catch (error) {
+    errors.push(
+      `Custom block ${block.id} validation threw an error: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+
+  return errors;
+};
+
 const validateBlock = (block: Block): string[] => {
   switch (block.type) {
     case "text":
@@ -102,6 +202,8 @@ const validateBlock = (block: Block): string[] => {
       return validateImageBlock(block);
     case "html":
       return validateHtmlBlock(block);
+    case "custom":
+      return validateCustomBlock(block);
     default:
       return [`Unknown block type for block ${(block as Block).id}`];
   }

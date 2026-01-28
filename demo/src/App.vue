@@ -48,11 +48,37 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import EmailEditor, { serializeDocument } from "email-editor";
+import EmailEditor, {
+  createCustomBlockInstance,
+  registerCustomBlock,
+  serializeDocument
+} from "email-editor";
 import type { Document } from "email-editor";
 
 const editorRef = ref<InstanceType<typeof EmailEditor> | null>(null);
 const json = ref("");
+
+registerCustomBlock({
+  id: "hero",
+  displayName: "Hero",
+  category: "Marketing",
+  settingsSchema: {
+    fields: [
+      { key: "headline", label: "Headline", type: "string", required: true, default: "Hello" },
+      { key: "ctaUrl", label: "CTA URL", type: "url", required: true, default: "https://example.com" }
+    ]
+  },
+  defaultConfig: { headline: "Hello", ctaUrl: "https://example.com" },
+  validate(config) {
+    const missingFields: string[] = [];
+    if (!config.headline) missingFields.push("headline");
+    if (!config.ctaUrl) missingFields.push("ctaUrl");
+    return { ok: missingFields.length === 0, missingFields };
+  },
+  renderHtml(config) {
+    return `<div class=\"hero\"><h1>${config.headline}</h1><a href=\"${config.ctaUrl}\">Learn more</a></div>`;
+  }
+});
 
 const mockUpload = async (): Promise<string> => {
   return "https://placehold.jp/3ac11f/ffffff/150x150.png?text=%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E3%81%AE%E7%94%BB%E5%83%8F";
@@ -112,7 +138,11 @@ const loadSample = (): void => {
           widthPx: 150,
           heightPx: 150
         }
-      }
+      },
+      createCustomBlockInstance("hero", {
+        headline: "Custom hero block",
+        ctaUrl: "https://example.com"
+      })
     ]
   };
 

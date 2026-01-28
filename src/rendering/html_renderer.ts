@@ -1,4 +1,13 @@
-import { Block, BlockAlign, ButtonBlock, ImageBlock, TextBlock, HtmlBlock } from "../core/types";
+import {
+  Block,
+  BlockAlign,
+  ButtonBlock,
+  CustomBlockInstance,
+  HtmlBlock,
+  ImageBlock,
+  TextBlock
+} from "../core/types";
+import { getCustomBlockDefinition } from "../core/custom_block_registry";
 
 const escapeHtml = (value: string): string => {
   return value
@@ -99,7 +108,49 @@ const renderHtmlBlock = (block: HtmlBlock): string => {
   return block.content;
 };
 
-export const renderBlockHtml = (block: Block): string => {
+const renderCustomBlockPlaceholder = (
+  definitionId: string,
+  reason: "missing" | "invalid"
+): string => {
+  const title = reason === "missing" ? "Missing custom block" : "Invalid custom block";
+  const detail = definitionId ? `: ${escapeHtml(definitionId)}` : "";
+  return `
+    <div style="border:1px dashed #f59e0b;background:#fffbeb;padding:12px;border-radius:8px;font-family:Helvetica,Arial,sans-serif;color:#92400e;margin:0 0 16px 0;">
+      <strong>${title}${detail}</strong>
+      <div style="font-size:13px;margin-top:6px;">This block cannot be rendered. The configuration is preserved.</div>
+    </div>
+  `;
+};
+
+const renderCustomBlock = (block: CustomBlockInstance, mode: "preview" | "export"): string => {
+  if (block.state === "missing-definition") {
+    return renderCustomBlockPlaceholder(block.definitionId, "missing");
+  }
+
+  const definition = getCustomBlockDefinition(block.definitionId);
+  if (!definition) {
+    return renderCustomBlockPlaceholder(block.definitionId, "missing");
+  }
+
+  if (block.state === "invalid") {
+    return renderCustomBlockPlaceholder(block.definitionId, "invalid");
+  }
+
+  try {
+    const html = definition.renderHtml(block.config, { mode });
+    if (typeof html !== "string") {
+      return renderCustomBlockPlaceholder(block.definitionId, "invalid");
+    }
+    return html;
+  } catch {
+    return renderCustomBlockPlaceholder(block.definitionId, "invalid");
+  }
+};
+
+export const renderBlockHtml = (
+  block: Block,
+  context: { mode: "preview" | "export" } = { mode: "preview" }
+): string => {
   switch (block.type) {
     case "text":
       return renderTextBlock(block);
@@ -109,6 +160,8 @@ export const renderBlockHtml = (block: Block): string => {
       return renderImageBlock(block);
     case "html":
       return renderHtmlBlock(block);
+    case "custom":
+      return renderCustomBlock(block, context.mode);
     default:
       return "";
   }

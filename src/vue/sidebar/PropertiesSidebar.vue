@@ -44,6 +44,25 @@
         :block="selectedBlock"
         @update="$emit('update-block', $event)"
       />
+
+      <template v-else-if="selectedBlock.type === 'custom'">
+        <div
+          v-if="customBlockState && customBlockState.state !== 'ready'"
+          class="ee-custom-readonly"
+        >
+          <div class="ee-readonly-title">
+            {{ customBlockState.state === "missing-definition"
+              ? "Missing custom block"
+              : "Invalid custom block" }}: {{ selectedBlock.definitionId }}
+          </div>
+          <div class="ee-readonly-note">Read-only (delete only)</div>
+        </div>
+        <CustomBlockProperties
+          v-else
+          :block="selectedBlock"
+          @update="$emit('update-block', $event)"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -52,11 +71,13 @@
 import { computed } from "vue";
 import type { Document, Block, LayoutSettings, EditorState } from "../../core/types";
 import type { ImageUploadHandler } from "../../core/editor_api";
+import { resolveCustomBlockState } from "../../core/custom_block_registry";
 import DocumentProperties from "./DocumentProperties.vue";
 import TextBlockProperties from "./TextBlockProperties.vue";
 import ButtonBlockProperties from "./ButtonBlockProperties.vue";
 import ImageBlockProperties from "./ImageBlockProperties.vue";
 import HtmlBlockProperties from "./HtmlBlockProperties.vue";
+import CustomBlockProperties from "./CustomBlockProperties.vue";
 
 const props = defineProps<{
   document: Document;
@@ -88,8 +109,16 @@ const title = computed(() => {
     case "button": return "Button Properties";
     case "image": return "Image Properties";
     case "html": return "HTML Properties";
+    case "custom": return "Custom Block Properties";
     default: return "Block Properties";
   }
+});
+
+const customBlockState = computed(() => {
+  if (!selectedBlock.value || selectedBlock.value.type !== "custom") {
+    return null;
+  }
+  return resolveCustomBlockState(selectedBlock.value);
 });
 </script>
 
@@ -133,5 +162,25 @@ const title = computed(() => {
 .ee-sidebar-body {
   flex: 1;
   overflow-y: auto;
+}
+
+.ee-custom-readonly {
+  border: 1px dashed #f59e0b;
+  background: #fffbeb;
+  padding: 12px;
+  border-radius: 10px;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.ee-readonly-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.ee-readonly-note {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
 }
 </style>

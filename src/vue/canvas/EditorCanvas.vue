@@ -51,6 +51,15 @@
             v-else-if="block.type === 'html'"
             :block="block"
           />
+          <CanvasCustomBlock
+            v-else-if="block.type === 'custom' && resolveCustomBlock(block).state === 'ready'"
+            :block="resolveCustomBlock(block)"
+          />
+          <CanvasCustomBlockPlaceholder
+            v-else-if="block.type === 'custom'"
+            :definition-id="block.definitionId"
+            :state="resolveCustomBlock(block).state"
+          />
         </CanvasBlock>
       </div>
       
@@ -69,6 +78,9 @@ import CanvasTextBlock from "./CanvasTextBlock.vue";
 import CanvasButtonBlock from "./CanvasButtonBlock.vue";
 import CanvasImageBlock from "./CanvasImageBlock.vue";
 import CanvasHtmlBlock from "./CanvasHtmlBlock.vue";
+import CanvasCustomBlock from "./CanvasCustomBlock.vue";
+import CanvasCustomBlockPlaceholder from "./CanvasCustomBlockPlaceholder.vue";
+import { resolveCustomBlockState } from "../../core/custom_block_registry";
 
 const props = defineProps<{
   document: Document;
@@ -147,6 +159,9 @@ defineExpose({
 });
 
 const handleSelect = (blockId: string) => {
+  if (isReadOnlyBlock(blockId)) {
+    return;
+  }
   if (selectedBlockId.value !== blockId) {
     emit("select-block", blockId);
     emit("set-editing", false);
@@ -178,6 +193,9 @@ const handleDelete = (blockId: string) => {
 };
 
 const handleDragStart = (id: string, event: DragEvent) => {
+  if (isReadOnlyBlock(id)) {
+    return;
+  }
   draggingId.value = id;
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = "move";
@@ -229,6 +247,27 @@ const handleDragEnd = () => {
   draggingId.value = null;
   dragOverId.value = null;
   dragOverPosition.value = null;
+};
+
+const resolveCustomBlock = (block: Block): Block => {
+  if (block.type !== "custom") {
+    return block;
+  }
+
+  const resolved = resolveCustomBlockState(block);
+  return {
+    ...block,
+    state: resolved.state,
+    readOnly: resolved.readOnly
+  };
+};
+
+const isReadOnlyBlock = (blockId: string): boolean => {
+  const block = props.document.blocks.find((item) => item.id === blockId);
+  if (!block || block.type !== "custom") {
+    return false;
+  }
+  return resolveCustomBlockState(block).readOnly;
 };
 </script>
 

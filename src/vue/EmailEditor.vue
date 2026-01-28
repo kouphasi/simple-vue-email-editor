@@ -152,7 +152,9 @@ const previewMode = computed<PreviewMode>({
 });
 
 const finalPreviewHtml = computed(() => {
-  const content = editorDocument.value.blocks.map(renderBlockHtml).join("");
+  const content = editorDocument.value.blocks
+    .map((block) => renderBlockHtml(block, { mode: "preview" }))
+    .join("");
   const width = previewMode.value === "mobile" ? 375 : 640;
   return wrapEmailHtml(content, width, { responsive: true });
 });
