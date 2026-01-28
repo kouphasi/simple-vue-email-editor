@@ -167,6 +167,7 @@ onMounted(() => {
 watch(
   () => props.block,
   () => {
+    definition.value = getCustomBlockDefinition(props.block.definitionId);
     refreshDraftConfig();
     updateValidation();
   },

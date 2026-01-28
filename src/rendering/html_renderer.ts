@@ -2,6 +2,7 @@ import {
   Block,
   BlockAlign,
   ButtonBlock,
+  CustomBlockDefinition,
   CustomBlockInstance,
   HtmlBlock,
   ImageBlock,
@@ -108,6 +109,47 @@ const renderHtmlBlock = (block: HtmlBlock): string => {
   return block.content;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+const deepMerge = (base: unknown, overrides: unknown): unknown => {
+  if (Array.isArray(base) || Array.isArray(overrides)) {
+    return overrides !== undefined ? overrides : base;
+  }
+
+  if (isPlainObject(base) && isPlainObject(overrides)) {
+    const merged: Record<string, unknown> = { ...base };
+    for (const [key, value] of Object.entries(overrides)) {
+      merged[key] = deepMerge(base[key], value);
+    }
+    return merged;
+  }
+
+  return overrides !== undefined ? overrides : base;
+};
+
+const buildSchemaDefaults = (definition: CustomBlockDefinition): Record<string, unknown> => {
+  const defaults: Record<string, unknown> = {};
+  for (const field of definition.settingsSchema.fields) {
+    if (field.default !== undefined) {
+      defaults[field.key] = field.default;
+    }
+  }
+  return defaults;
+};
+
+const mergeConfigWithDefaults = (
+  definition: CustomBlockDefinition,
+  config: Record<string, unknown>
+): Record<string, unknown> => {
+  const baseConfig = deepMerge(
+    buildSchemaDefaults(definition),
+    definition.defaultConfig
+  ) as Record<string, unknown>;
+  return deepMerge(baseConfig, config) as Record<string, unknown>;
+};
+
 const renderCustomBlockPlaceholder = (
   definitionId: string,
   reason: "missing" | "invalid"
@@ -137,7 +179,8 @@ const renderCustomBlock = (block: CustomBlockInstance, mode: "preview" | "export
   }
 
   try {
-    const html = definition.renderHtml(block.config, { mode });
+    const mergedConfig = mergeConfigWithDefaults(definition, block.config);
+    const html = definition.renderHtml(mergedConfig, { mode });
     if (typeof html !== "string") {
       return renderCustomBlockPlaceholder(block.definitionId, "invalid");
     }
