@@ -99,7 +99,7 @@ const updateAlign = (align: BlockAlign) => {
 
 const updateFontSize = (event: Event) => {
   const input = event.target as HTMLInputElement;
-  if (input.value === "") {
+  if (input.value.trim() === "") {
     emit("update", {
       ...props.block,
       fontSize: undefined
