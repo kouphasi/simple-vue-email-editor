@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import * as vue3Compiler from "vue3/compiler-sfc";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -8,7 +9,11 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: __dirname,
-  plugins: [vue()],
+  plugins: [
+    vue({
+      compiler: vue3Compiler
+    })
+  ],
   resolve: {
     alias: {
       "email-editor": path.resolve(__dirname, "../src/index.ts"),
