@@ -134,6 +134,14 @@ const updateUrl = (event: Event) => {
 
 const updateFontSize = (event: Event) => {
   const input = event.target as HTMLInputElement;
+  if (input.value === "") {
+    emit("update", {
+      ...props.block,
+      fontSize: undefined
+    });
+    return;
+  }
+
   const value = Number(input.value);
   emit("update", {
     ...props.block,
