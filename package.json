@@ -13,6 +13,7 @@
     "dev": "vite",
     "build": "vite build",
     "demo": "vite -c demo/vite.config.ts",
+    "demo:vue3": "vite -c demo-vue3/vite.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:vue3": "vitest run -c vite.v3.config.ts",
@@ -39,7 +40,7 @@
     "vite": "^5.4.8",
     "vitest": "^2.1.2",
     "vue": "^2.7.16",
-    "vue3": "npm:vue@^3.4",
+    "vue3": "npm:vue@^3.5.0",
     "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^2.2.0"
   },
