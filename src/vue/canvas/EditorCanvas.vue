@@ -283,11 +283,11 @@ const handleDragOver = (id: string, event: DragEvent) => {
     dragOverPosition.value = fromIndex < toIndex ? "bottom" : "top";
     return;
   }
-  // セルからのドラッグ時はマウス位置で判定
+  // セルからのドラッグ時はマウス位置で判定（上部60%をtop、下部40%をbottomとして安定させる）
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
-  const midY = rect.top + rect.height / 2;
-  dragOverPosition.value = event.clientY < midY ? "top" : "bottom";
+  const threshold = rect.top + rect.height * 0.6;
+  dragOverPosition.value = event.clientY < threshold ? "top" : "bottom";
 };
 
 const handleDragLeave = (id: string) => {
