@@ -39,7 +39,13 @@
               @dragend="handleCellBlockDragEnd"
               @delete="handleCellBlockDelete(cell.id, cellBlock.id)"
             >
-              <div v-html="renderSingleBlock(cellBlock)"></div>
+              <div
+                v-if="cellBlock.type === 'html' && !cellBlock.content"
+                class="ee-html-placeholder"
+              >
+                Empty HTML Block
+              </div>
+              <div v-else v-html="renderSingleBlock(cellBlock)"></div>
             </CanvasBlock>
           </td>
         </tr>
@@ -328,5 +334,16 @@ const renderSingleBlock = (block: CellBlock): string => {
 
 .ee-cell-block-frame.is-dragging {
   opacity: 0.5;
+}
+
+.ee-html-placeholder {
+  padding: 24px;
+  background: #f3f4f6;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  color: #9ca3af;
+  text-align: center;
+  font-size: 14px;
+  font-style: italic;
 }
 </style>
