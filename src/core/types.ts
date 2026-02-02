@@ -165,7 +165,13 @@ export const PREVIEW_WIDTHS: Record<PreviewMode, PreviewWidthPx> = {
   desktop: 640
 };
 
+export interface ParentTableContext {
+  tableBlockId: string;
+  cellId: string;
+}
+
 export interface EditorState {
   selectedBlockId: string | null;
   isEditingText: boolean;
+  parentTableContext?: ParentTableContext | null;
 }

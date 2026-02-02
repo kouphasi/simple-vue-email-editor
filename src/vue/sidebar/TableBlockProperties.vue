@@ -68,39 +68,34 @@
             <div
               v-for="cellBlock in cell.blocks"
               :key="cellBlock.id"
-              class="ee-cell-block"
+              class="ee-cell-block ee-cell-block--clickable"
+              @click="handleSelectCellBlock(cell.id, cellBlock.id)"
             >
               <div class="ee-cell-block-header">
                 <span class="ee-cell-block-label">{{ getBlockLabel(cellBlock) }}</span>
                 <button
                   type="button"
                   class="ee-cell-block-remove"
-                  @click="handleDeleteCellBlock(cell.id, cellBlock.id)"
+                  @click.stop="handleDeleteCellBlock(cell.id, cellBlock.id)"
                 >
                   Remove
                 </button>
               </div>
-              <TextBlock
-                v-if="cellBlock.type === 'text'"
-                :block="cellBlock"
-                @update="handleUpdateCellBlock(cell.id, $event)"
-              />
-              <ButtonBlock
-                v-else-if="cellBlock.type === 'button'"
-                :block="cellBlock"
-                @update="handleUpdateCellBlock(cell.id, $event)"
-              />
-              <ImageBlock
-                v-else-if="cellBlock.type === 'image'"
-                :block="cellBlock"
-                :on-image-upload="onImageUpload"
-                @update="handleUpdateCellBlock(cell.id, $event)"
-              />
-              <HtmlBlock
-                v-else-if="cellBlock.type === 'html'"
-                :block="cellBlock"
-                @update="handleUpdateCellBlock(cell.id, $event)"
-              />
+              <div class="ee-cell-block-preview">
+                <span v-if="cellBlock.type === 'text'" class="ee-preview-text">
+                  {{ getPreviewText(cellBlock.text) }}
+                </span>
+                <span v-else-if="cellBlock.type === 'button'" class="ee-preview-button">
+                  {{ cellBlock.label }}
+                </span>
+                <span v-else-if="cellBlock.type === 'image'" class="ee-preview-image">
+                  {{ cellBlock.url ? "Image set" : "No image" }}
+                </span>
+                <span v-else-if="cellBlock.type === 'html'" class="ee-preview-html">
+                  {{ cellBlock.content ? "HTML content" : "Empty HTML" }}
+                </span>
+              </div>
+              <div class="ee-cell-block-edit-hint">Click to edit →</div>
             </div>
 
             <div class="ee-cell-actions">
@@ -141,13 +136,8 @@ import {
   addRowToTable,
   deleteCellBlock,
   deleteRowFromTable,
-  updateCellBlock,
   updateTableColumnCount
 } from "../../services/document_service";
-import TextBlock from "../blocks/TextBlock.vue";
-import ButtonBlock from "../blocks/ButtonBlock.vue";
-import ImageBlock from "../blocks/ImageBlock.vue";
-import HtmlBlock from "../blocks/HtmlBlock.vue";
 
 const props = defineProps<{
   block: TableBlock;
@@ -156,7 +146,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: "update", block: TableBlock): void;
+  (event: "select-cell-block", cellId: string, blockId: string): void;
 }>();
+
+const handleSelectCellBlock = (cellId: string, blockId: string) => {
+  emit("select-cell-block", cellId, blockId);
+};
+
+const getPreviewText = (text: string): string => {
+  if (!text) {
+    return "(empty)";
+  }
+  if (text.length <= 30) {
+    return text;
+  }
+  return text.slice(0, 30) + "...";
+};
 
 const columnOptions = [1, 2, 3, 4];
 
@@ -310,10 +315,6 @@ const handleAddCellBlock = (cellId: string, type: "text" | "button" | "image" | 
   emit("update", replaceBlockInCell(props.block, cellId, nextBlock));
 };
 
-const handleUpdateCellBlock = (cellId: string, nextBlock: CellBlock) => {
-  emit("update", updateCellBlock(props.block, cellId, nextBlock.id, () => nextBlock));
-};
-
 const handleDeleteCellBlock = (cellId: string, blockId: string) => {
   emit("update", deleteCellBlock(props.block, cellId, blockId));
 };
@@ -460,11 +461,21 @@ const getBlockLabel = (block: CellBlock): string => {
   background: #f9fafb;
 }
 
+.ee-cell-block--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ee-cell-block--clickable:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
 .ee-cell-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .ee-cell-block-label {
@@ -479,6 +490,28 @@ const getBlockLabel = (block: CellBlock): string => {
   color: #b91c1c;
   font-size: 12px;
   cursor: pointer;
+}
+
+.ee-cell-block-preview {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ee-preview-text,
+.ee-preview-button,
+.ee-preview-image,
+.ee-preview-html {
+  display: block;
+}
+
+.ee-cell-block-edit-hint {
+  font-size: 11px;
+  color: #2563eb;
+  text-align: right;
 }
 
 .ee-cell-actions {

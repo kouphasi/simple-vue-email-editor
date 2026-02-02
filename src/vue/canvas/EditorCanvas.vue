@@ -54,6 +54,8 @@
           <CanvasTableBlock
             v-else-if="block.type === 'table'"
             :block="block"
+            :selected-cell-block-id="getSelectedCellBlockId(block.id)"
+            @select-cell-block="(cellId, blockId) => handleSelectCellBlock(block.id, cellId, blockId)"
           />
           <CanvasCustomBlock
             v-else-if="block.type === 'custom' && resolveCustomBlock(block).state === 'ready'"
@@ -98,6 +100,7 @@ const emit = defineEmits<{
   (event: "delete-block", blockId: string): void;
   (event: "select-block", blockId: string | null): void;
   (event: "set-editing", isEditing: boolean): void;
+  (event: "select-cell-block", tableBlockId: string, cellId: string, blockId: string): void;
 }>();
 
 const { selectedBlockId, isEditingText } = toRefs(props.editorState);
@@ -281,6 +284,18 @@ const isReadOnlyBlock = (blockId: string): boolean => {
     return false;
   }
   return resolveCustomBlockState(block).readOnly;
+};
+
+const getSelectedCellBlockId = (tableBlockId: string): string | null => {
+  const ctx = props.editorState.parentTableContext;
+  if (ctx && ctx.tableBlockId === tableBlockId) {
+    return props.editorState.selectedBlockId;
+  }
+  return null;
+};
+
+const handleSelectCellBlock = (tableBlockId: string, cellId: string, blockId: string) => {
+  emit("select-cell-block", tableBlockId, cellId, blockId);
 };
 </script>
 

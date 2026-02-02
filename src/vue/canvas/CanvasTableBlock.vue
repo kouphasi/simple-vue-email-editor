@@ -12,7 +12,15 @@
             <div v-if="cell.blocks.length === 0" class="ee-cell-empty">
               Empty cell
             </div>
-            <div v-else v-html="renderCellBlocks(cell.blocks)"></div>
+            <div
+              v-for="cellBlock in cell.blocks"
+              :key="cellBlock.id"
+              class="ee-cell-block-wrapper"
+              :class="{ 'is-selected': selectedCellBlockId === cellBlock.id }"
+              @click.stop="handleCellBlockClick(cell.id, cellBlock.id)"
+            >
+              <div v-html="renderSingleBlock(cellBlock)"></div>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -27,7 +35,16 @@ import { resolveCellWidths } from "../../core/table_utils";
 
 const props = defineProps<{
   block: TableBlock;
+  selectedCellBlockId?: string | null;
 }>();
+
+const emit = defineEmits<{
+  (event: "select-cell-block", cellId: string, blockId: string): void;
+}>();
+
+const handleCellBlockClick = (cellId: string, blockId: string) => {
+  emit("select-cell-block", cellId, blockId);
+};
 
 const getCellStyle = (row: TableRow, index: number): Record<string, string> => {
   const padding = Number.isFinite(props.block.cellPadding ?? undefined)
@@ -91,15 +108,11 @@ const sanitizeHtml = (html: string): string => {
   return doc.body.innerHTML;
 };
 
-const renderCellBlocks = (blocks: CellBlock[]): string => {
-  return blocks
-    .map((block) => {
-      if (block.type === "html") {
-        return sanitizeHtml(block.content);
-      }
-      return renderBlockHtml(block);
-    })
-    .join("");
+const renderSingleBlock = (block: CellBlock): string => {
+  if (block.type === "html") {
+    return sanitizeHtml(block.content);
+  }
+  return renderBlockHtml(block);
 };
 </script>
 
@@ -113,7 +126,6 @@ const renderCellBlocks = (blocks: CellBlock[]): string => {
   border-collapse: collapse;
   table-layout: fixed;
   background: #ffffff;
-  pointer-events: none;
 }
 
 .ee-table-cell {
@@ -129,5 +141,19 @@ const renderCellBlocks = (blocks: CellBlock[]): string => {
   border: 1px dashed #e5e7eb;
   border-radius: 6px;
   background: #f9fafb;
+}
+
+.ee-cell-block-wrapper {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: outline 0.15s ease;
+}
+
+.ee-cell-block-wrapper:hover {
+  outline: 2px solid #93c5fd;
+}
+
+.ee-cell-block-wrapper.is-selected {
+  outline: 2px solid #2563eb;
 }
 </style>
