@@ -41,10 +41,7 @@
           Delete row
         </button>
       </div>
-      <div
-        class="ee-row-grid"
-        :style="{ gridTemplateColumns: `repeat(${row.cells.length}, minmax(0, 1fr))` }"
-      >
+      <div class="ee-row-grid">
         <div v-for="(cell, cellIndex) in row.cells" :key="cell.id" class="ee-cell-card">
           <div class="ee-cell-header">
             <span class="ee-cell-title">Cell {{ cellIndex + 1 }}</span>
@@ -314,7 +311,8 @@ const getBlockLabel = (block: CellBlock): string => {
 }
 
 .ee-row-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 

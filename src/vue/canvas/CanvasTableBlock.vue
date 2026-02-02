@@ -84,7 +84,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: "select-cell-block", cellId: string, blockId: string): void;
-  (event: "cell-block-drag-start", cellId: string, blockId: string, event: DragEvent): void;
+  (event: "cell-block-drag-start", cellId: string, blockId: string, e: DragEvent): void;
   (event: "cell-block-drag-end"): void;
   (event: "cell-drop", cellId: string): void;
   (event: "cell-block-delete", cellId: string, blockId: string): void;
