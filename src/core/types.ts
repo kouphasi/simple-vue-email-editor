@@ -1,4 +1,4 @@
-export type BlockType = "text" | "button" | "image" | "html" | "custom";
+export type BlockType = "text" | "button" | "image" | "html" | "custom" | "table";
 export type PreviewMode = "mobile" | "desktop";
 export type PreviewWidthPx = 375 | 640;
 
@@ -64,6 +64,26 @@ export interface ImageBlock extends BlockBase {
 export interface HtmlBlock extends BlockBase {
   type: "html";
   content: string;
+}
+
+export type CellBlock = TextBlock | ButtonBlock | ImageBlock | HtmlBlock;
+
+export interface TableCell {
+  id: string;
+  widthPercent?: number;
+  blocks: CellBlock[];
+}
+
+export interface TableRow {
+  id: string;
+  cells: TableCell[];
+}
+
+export interface TableBlock extends BlockBase {
+  type: "table";
+  rows: TableRow[];
+  columnCount: number;
+  cellPadding?: number;
 }
 
 export type SettingsFieldType =
@@ -132,14 +152,26 @@ export interface CustomBlockInstance extends BlockBase {
   readOnly: boolean;
 }
 
-export type Block = TextBlock | ButtonBlock | ImageBlock | HtmlBlock | CustomBlockInstance;
+export type Block =
+  | TextBlock
+  | ButtonBlock
+  | ImageBlock
+  | HtmlBlock
+  | CustomBlockInstance
+  | TableBlock;
 
 export const PREVIEW_WIDTHS: Record<PreviewMode, PreviewWidthPx> = {
   mobile: 375,
   desktop: 640
 };
 
+export interface ParentTableContext {
+  tableBlockId: string;
+  cellId: string;
+}
+
 export interface EditorState {
   selectedBlockId: string | null;
   isEditingText: boolean;
+  parentTableContext?: ParentTableContext | null;
 }

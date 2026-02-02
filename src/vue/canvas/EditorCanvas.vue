@@ -14,13 +14,13 @@
           'is-drag-over-top': dragOverId === block.id && dragOverPosition === 'top',
           'is-drag-over-bottom': dragOverId === block.id && dragOverPosition === 'bottom'
         }"
-        @dragover.prevent="handleDragOver(block.id)"
+        @dragover.prevent="handleDragOver(block.id, $event)"
         @dragleave="handleDragLeave(block.id)"
         @drop.prevent="handleDrop(block.id)"
       >
         <CanvasBlock
           :selected="selectedBlockId === block.id"
-          @dragstart="handleDragStart(block.id, $event)"
+          @dragstart="handleDragStart(block, index, $event)"
           @dragend="handleDragEnd"
           @select="handleSelect(block.id)"
           @delete="handleDelete(block.id)"
@@ -51,6 +51,17 @@
             v-else-if="block.type === 'html'"
             :block="block"
           />
+          <CanvasTableBlock
+            v-else-if="block.type === 'table'"
+            :block="block"
+            :selected-cell-block-id="getSelectedCellBlockId(block.id)"
+            :drag-source="dragSource"
+            @select-cell-block="(cellId, blockId) => handleSelectCellBlock(block.id, cellId, blockId)"
+            @cell-block-drag-start="(cellId, blockId, event) => handleCellBlockDragStart(block.id, cellId, blockId, event)"
+            @cell-block-drag-end="handleCellBlockDragEnd"
+            @cell-block-delete="(cellId, blockId) => handleCellBlockDelete(block.id, cellId, blockId)"
+            @cell-drop="(cellId) => handleCellDrop(block.id, cellId)"
+          />
           <CanvasCustomBlock
             v-else-if="block.type === 'custom' && resolveCustomBlock(block).state === 'ready'"
             :block="resolveCustomBlock(block)"
@@ -72,12 +83,20 @@
 
 <script setup lang="ts">
 import { computed, ref, toRefs, onBeforeUpdate } from "vue";
-import type { Block, CustomBlockInstance, Document, EditorState } from "../../core/types";
+import type {
+  Block,
+  CellBlock,
+  CustomBlockInstance,
+  Document,
+  EditorState,
+  TableBlock
+} from "../../core/types";
 import CanvasBlock from "./CanvasBlock.vue";
 import CanvasTextBlock from "./CanvasTextBlock.vue";
 import CanvasButtonBlock from "./CanvasButtonBlock.vue";
 import CanvasImageBlock from "./CanvasImageBlock.vue";
 import CanvasHtmlBlock from "./CanvasHtmlBlock.vue";
+import CanvasTableBlock from "./CanvasTableBlock.vue";
 import CanvasCustomBlock from "./CanvasCustomBlock.vue";
 import CanvasCustomBlockPlaceholder from "./CanvasCustomBlockPlaceholder.vue";
 import { resolveCustomBlockState } from "../../core/custom_block_registry";
@@ -93,6 +112,18 @@ const emit = defineEmits<{
   (event: "delete-block", blockId: string): void;
   (event: "select-block", blockId: string | null): void;
   (event: "set-editing", isEditing: boolean): void;
+  (event: "select-cell-block", tableBlockId: string, cellId: string, blockId: string): void;
+  (event: "delete-cell-block", tableBlockId: string, cellId: string, blockId: string): void;
+  (event: "move-block-to-cell", blockIndex: number, tableBlockId: string, cellId: string): void;
+  (event: "move-cell-to-top-level", tableBlockId: string, cellId: string, blockId: string, targetIndex: number): void;
+  (
+    event: "move-cell-to-cell",
+    sourceTableId: string,
+    sourceCellId: string,
+    blockId: string,
+    targetTableId: string,
+    targetCellId: string
+  ): void;
 }>();
 
 const { selectedBlockId, isEditingText } = toRefs(props.editorState);
@@ -100,6 +131,23 @@ const { selectedBlockId, isEditingText } = toRefs(props.editorState);
 const draggingId = ref<string | null>(null);
 const dragOverId = ref<string | null>(null);
 const dragOverPosition = ref<"top" | "bottom" | null>(null);
+type DragSource =
+  | { type: "top-level"; blockId: string; index: number; blockType: Block["type"] }
+  | {
+      type: "cell";
+      blockId: string;
+      tableBlockId: string;
+      cellId: string;
+      blockType: Block["type"];
+    };
+const dragSource = ref<DragSource | null>(null);
+
+const resetDragState = () => {
+  draggingId.value = null;
+  dragOverId.value = null;
+  dragOverPosition.value = null;
+  dragSource.value = null;
+};
 type TextBlockHandle = {
   toggleBold: () => void;
   setColor: (color: string) => void;
@@ -192,14 +240,20 @@ const handleDelete = (blockId: string) => {
   }
 };
 
-const handleDragStart = (id: string, event: DragEvent) => {
-  if (isReadOnlyBlock(id)) {
+const handleDragStart = (block: Block, index: number, event: DragEvent) => {
+  if (isReadOnlyBlock(block.id)) {
     return;
   }
-  draggingId.value = id;
+  draggingId.value = block.id;
+  dragSource.value = {
+    type: "top-level",
+    blockId: block.id,
+    index,
+    blockType: block.type
+  };
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", id);
+    event.dataTransfer.setData("text/plain", block.id);
     const handle = event.currentTarget as HTMLElement | null;
     const blockElement = handle?.closest(".ee-canvas-block") as HTMLElement | null;
     if (blockElement) {
@@ -211,18 +265,29 @@ const handleDragStart = (id: string, event: DragEvent) => {
   }
 };
 
-const handleDragOver = (id: string) => {
-  if (!draggingId.value || draggingId.value === id) {
+const handleDragOver = (id: string, event: DragEvent) => {
+  if (!dragSource.value) {
+    return;
+  }
+  if (dragSource.value.type === "top-level" && dragSource.value.blockId === id) {
     return;
   }
   dragOverId.value = id;
-  const fromIndex = props.document.blocks.findIndex((b) => b.id === draggingId.value);
-  const toIndex = props.document.blocks.findIndex((b) => b.id === id);
-  if (fromIndex < 0 || toIndex < 0) {
-    dragOverPosition.value = null;
+  if (dragSource.value.type === "top-level") {
+    const fromIndex = props.document.blocks.findIndex((b) => b.id === dragSource.value?.blockId);
+    const toIndex = props.document.blocks.findIndex((b) => b.id === id);
+    if (fromIndex < 0 || toIndex < 0) {
+      dragOverPosition.value = null;
+      return;
+    }
+    dragOverPosition.value = fromIndex < toIndex ? "bottom" : "top";
     return;
   }
-  dragOverPosition.value = fromIndex < toIndex ? "bottom" : "top";
+  // セルからのドラッグ時はマウス位置で判定（上部60%をtop、下部40%をbottomとして安定させる）
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const threshold = rect.top + rect.height * 0.6;
+  dragOverPosition.value = event.clientY < threshold ? "top" : "bottom";
 };
 
 const handleDragLeave = (id: string) => {
@@ -233,28 +298,132 @@ const handleDragLeave = (id: string) => {
 };
 
 const handleDrop = (id: string) => {
-  if (!draggingId.value || draggingId.value === id) {
-    draggingId.value = null;
-    dragOverId.value = null;
+  const source = dragSource.value;
+  if (!source) {
+    resetDragState();
+    return;
+  }
+  if (source.type === "top-level" && source.blockId === id) {
+    resetDragState();
     return;
   }
 
-  const fromIndex = props.document.blocks.findIndex((b) => b.id === draggingId.value);
   const toIndex = props.document.blocks.findIndex((b) => b.id === id);
 
-  draggingId.value = null;
-  dragOverId.value = null;
-  dragOverPosition.value = null;
+  if (toIndex < 0) {
+    resetDragState();
+    return;
+  }
 
-  if (fromIndex >= 0 && toIndex >= 0) {
+  if (source.type === "cell") {
+    const adjustedIndex = dragOverPosition.value === "bottom" ? toIndex + 1 : toIndex;
+    emit("move-cell-to-top-level", source.tableBlockId, source.cellId, source.blockId, adjustedIndex);
+    resetDragState();
+    return;
+  }
+
+  const fromIndex = props.document.blocks.findIndex((b) => b.id === source.blockId);
+  resetDragState();
+
+  if (fromIndex >= 0) {
     emit("reorder", fromIndex, toIndex);
   }
 };
 
 const handleDragEnd = () => {
+  resetDragState();
+};
+
+const findCellBlock = (
+  tableBlockId: string,
+  cellId: string,
+  blockId: string
+): CellBlock | null => {
+  const tableBlock = props.document.blocks.find(
+    (block) => block.id === tableBlockId && block.type === "table"
+  ) as TableBlock | undefined;
+  if (!tableBlock) {
+    return null;
+  }
+  for (const row of tableBlock.rows) {
+    for (const cell of row.cells) {
+      if (cell.id !== cellId) {
+        continue;
+      }
+      const cellBlock = cell.blocks.find((block) => block.id === blockId);
+      return cellBlock ?? null;
+    }
+  }
+  return null;
+};
+
+const handleCellBlockDragStart = (
+  tableBlockId: string,
+  cellId: string,
+  blockId: string,
+  event: DragEvent
+) => {
+  const cellBlock = findCellBlock(tableBlockId, cellId, blockId);
+  if (!cellBlock) {
+    return;
+  }
   draggingId.value = null;
-  dragOverId.value = null;
-  dragOverPosition.value = null;
+  dragSource.value = {
+    type: "cell",
+    blockId,
+    tableBlockId,
+    cellId,
+    blockType: cellBlock.type
+  };
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", blockId);
+    const handle = event.currentTarget as HTMLElement | null;
+    const blockElement = handle?.closest(".ee-canvas-block") as HTMLElement | null;
+    const dragTarget = blockElement ?? handle;
+    if (dragTarget) {
+      const rect = dragTarget.getBoundingClientRect();
+      const offsetX = Math.max(0, event.clientX - rect.left);
+      const offsetY = Math.max(0, event.clientY - rect.top);
+      event.dataTransfer.setDragImage(dragTarget, offsetX, offsetY);
+    }
+  }
+};
+
+const handleCellBlockDragEnd = () => {
+  resetDragState();
+};
+
+const handleCellBlockDelete = (tableBlockId: string, cellId: string, blockId: string) => {
+  emit("delete-cell-block", tableBlockId, cellId, blockId);
+};
+
+const handleCellDrop = (tableBlockId: string, cellId: string) => {
+  const source = dragSource.value;
+  if (!source) {
+    return;
+  }
+  if (source.type === "top-level") {
+    const fromIndex = props.document.blocks.findIndex((b) => b.id === source.blockId);
+    if (fromIndex >= 0) {
+      emit("move-block-to-cell", fromIndex, tableBlockId, cellId);
+    }
+    resetDragState();
+    return;
+  }
+  if (source.tableBlockId === tableBlockId && source.cellId === cellId) {
+    resetDragState();
+    return;
+  }
+  emit(
+    "move-cell-to-cell",
+    source.tableBlockId,
+    source.cellId,
+    source.blockId,
+    tableBlockId,
+    cellId
+  );
+  resetDragState();
 };
 
 const resolveCustomBlock = (block: Block): CustomBlockInstance => {
@@ -276,6 +445,18 @@ const isReadOnlyBlock = (blockId: string): boolean => {
     return false;
   }
   return resolveCustomBlockState(block).readOnly;
+};
+
+const getSelectedCellBlockId = (tableBlockId: string): string | null => {
+  const ctx = props.editorState.parentTableContext;
+  if (ctx && ctx.tableBlockId === tableBlockId) {
+    return props.editorState.selectedBlockId;
+  }
+  return null;
+};
+
+const handleSelectCellBlock = (tableBlockId: string, cellId: string, blockId: string) => {
+  emit("select-cell-block", tableBlockId, cellId, blockId);
 };
 </script>
 

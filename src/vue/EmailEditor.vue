@@ -35,6 +35,11 @@
           @reorder="handleReorder"
           @select-block="handleSelectBlock"
           @set-editing="handleSetEditing"
+          @select-cell-block="handleSelectCellBlock"
+          @move-block-to-cell="handleMoveBlockToCell"
+          @move-cell-to-top-level="handleMoveCellBlockToTopLevel"
+          @move-cell-to-cell="handleMoveCellBlockToCell"
+          @delete-cell-block="handleDeleteCellBlock"
         />
       </div>
       
@@ -45,7 +50,10 @@
           :on-image-upload="onImageUpload"
           @update-layout="handleUpdateLayout"
           @update-block="handleUpdateBlock"
+          @update-cell-block="handleUpdateCellBlock"
+          @delete-cell-block="handleDeleteCellBlock"
           @select-block="handleSelectBlock"
+          @select-cell-block-from-table="handleSelectCellBlock"
           @format-bold="handleFormatBold"
           @format-color="handleFormatColor"
         />
@@ -81,12 +89,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, toRefs } from "vue";
-import type { Block, Document, PreviewMode, EditorState, LayoutSettings } from "../core/types";
+import type { Block, CellBlock, Document, PreviewMode, EditorState, LayoutSettings, TableBlock } from "../core/types";
 import type { ImageUploadHandler } from "../core/editor_api";
 import {
   addBlock,
   createDocument,
   deleteBlock,
+  deleteCellBlock,
+  moveBlockToCell,
+  moveCellBlockToCell,
+  moveCellBlockToTopLevel,
   reorderBlocks,
   setPreviewMode,
   updateBlock,
@@ -135,7 +147,8 @@ const editorDocument = computed(() => documentRef.value);
 // Editor State
 const editorState = ref<EditorState>({
   selectedBlockId: null,
-  isEditingText: false
+  isEditingText: false,
+  parentTableContext: null
 });
 
 const showFinalPreview = ref(false);
@@ -231,6 +244,129 @@ const handleUpdateLayout = (layout: LayoutSettings): void => {
 
 const handleSelectBlock = (blockId: string | null): void => {
   editorState.value.selectedBlockId = blockId;
+  editorState.value.parentTableContext = null;
+};
+
+const handleSelectCellBlock = (tableBlockId: string, cellId: string, blockId: string): void => {
+  editorState.value.selectedBlockId = blockId;
+  editorState.value.parentTableContext = {
+    tableBlockId,
+    cellId
+  };
+  editorState.value.isEditingText = false;
+};
+
+const handleUpdateCellBlock = (cellBlock: CellBlock): void => {
+  const ctx = editorState.value.parentTableContext;
+  if (!ctx) {
+    return;
+  }
+  const tableBlock = documentRef.value.blocks.find(
+    (b) => b.id === ctx.tableBlockId && b.type === "table"
+  ) as TableBlock | undefined;
+  if (!tableBlock) {
+    return;
+  }
+  const updatedRows = tableBlock.rows.map((row) => ({
+    ...row,
+    cells: row.cells.map((cell) => {
+      if (cell.id !== ctx.cellId) {
+        return cell;
+      }
+      return {
+        ...cell,
+        blocks: cell.blocks.map((block) =>
+          block.id === cellBlock.id ? cellBlock : block
+        )
+      };
+    })
+  }));
+  const updatedTable: TableBlock = {
+    ...tableBlock,
+    rows: updatedRows
+  };
+  setDocument(updateBlock(documentRef.value, updatedTable.id, () => updatedTable), true);
+};
+
+const handleDeleteCellBlock = (
+  tableBlockId: string,
+  cellId: string,
+  blockId: string
+): void => {
+  const tableBlock = documentRef.value.blocks.find(
+    (b) => b.id === tableBlockId && b.type === "table"
+  ) as TableBlock | undefined;
+  if (!tableBlock) {
+    return;
+  }
+  const updatedTable = deleteCellBlock(tableBlock, cellId, blockId);
+  setDocument(updateBlock(documentRef.value, updatedTable.id, () => updatedTable), true);
+  if (editorState.value.selectedBlockId === blockId) {
+    editorState.value.selectedBlockId = tableBlockId;
+    editorState.value.parentTableContext = null;
+    editorState.value.isEditingText = false;
+  }
+};
+
+const handleMoveBlockToCell = (blockIndex: number, tableBlockId: string, cellId: string) => {
+  const sourceBlock = documentRef.value.blocks[blockIndex];
+  const result = moveBlockToCell(documentRef.value, blockIndex, tableBlockId, cellId);
+  if (!result) {
+    return;
+  }
+  setDocument(result, true);
+  if (sourceBlock && editorState.value.selectedBlockId === sourceBlock.id) {
+    editorState.value.parentTableContext = { tableBlockId, cellId };
+    editorState.value.isEditingText = false;
+  }
+};
+
+const handleMoveCellBlockToTopLevel = (
+  tableBlockId: string,
+  cellId: string,
+  blockId: string,
+  targetIndex: number
+) => {
+  const result = moveCellBlockToTopLevel(
+    documentRef.value,
+    tableBlockId,
+    cellId,
+    blockId,
+    targetIndex
+  );
+  if (result === documentRef.value) {
+    return;
+  }
+  setDocument(result, true);
+  if (editorState.value.selectedBlockId === blockId) {
+    editorState.value.parentTableContext = null;
+    editorState.value.isEditingText = false;
+  }
+};
+
+const handleMoveCellBlockToCell = (
+  sourceTableId: string,
+  sourceCellId: string,
+  blockId: string,
+  targetTableId: string,
+  targetCellId: string
+) => {
+  const result = moveCellBlockToCell(
+    documentRef.value,
+    sourceTableId,
+    sourceCellId,
+    blockId,
+    targetTableId,
+    targetCellId
+  );
+  if (!result) {
+    return;
+  }
+  setDocument(result, true);
+  if (editorState.value.selectedBlockId === blockId) {
+    editorState.value.parentTableContext = { tableBlockId: targetTableId, cellId: targetCellId };
+    editorState.value.isEditingText = false;
+  }
 };
 
 const handleSetEditing = (isEditing: boolean): void => {

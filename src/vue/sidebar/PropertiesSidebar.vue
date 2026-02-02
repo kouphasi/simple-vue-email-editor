@@ -1,9 +1,25 @@
 <template>
   <div class="ee-sidebar">
     <div class="ee-sidebar-header">
+      <button
+        v-if="parentTableContext"
+        class="ee-back-btn"
+        @click="handleBackToTable"
+        aria-label="Back to Table"
+      >
+        ← Back to Table
+      </button>
       <h2 class="ee-sidebar-title">{{ title }}</h2>
       <button
-        v-if="selectedBlock"
+        v-if="parentTableContext && selectedBlock"
+        class="ee-delete-msg"
+        @click="handleDeleteCellBlock"
+        aria-label="Remove cell block"
+      >
+        Remove
+      </button>
+      <button
+        v-if="selectedBlock && !parentTableContext"
         class="ee-close-msg"
         @click="$emit('select-block', null)"
         aria-label="Deselect"
@@ -21,28 +37,36 @@
       <TextBlockProperties
         v-else-if="selectedBlock.type === 'text'"
         :block="selectedBlock"
-        @update="$emit('update-block', $event)"
+        @update="parentTableContext ? handleCellBlockUpdate($event) : $emit('update-block', $event)"
         @format-bold="$emit('format-bold')"
         @format-color="$emit('format-color', $event)"
       />
-      
+
       <ButtonBlockProperties
         v-else-if="selectedBlock.type === 'button'"
         :block="selectedBlock"
-        @update="$emit('update-block', $event)"
+        @update="parentTableContext ? handleCellBlockUpdate($event) : $emit('update-block', $event)"
       />
-      
+
       <ImageBlockProperties
         v-else-if="selectedBlock.type === 'image'"
         :block="selectedBlock"
         :on-image-upload="onImageUpload"
-        @update="$emit('update-block', $event)"
+        @update="parentTableContext ? handleCellBlockUpdate($event) : $emit('update-block', $event)"
       />
-      
+
       <HtmlBlockProperties
         v-else-if="selectedBlock.type === 'html'"
         :block="selectedBlock"
+        @update="parentTableContext ? handleCellBlockUpdate($event) : $emit('update-block', $event)"
+      />
+
+      <TableBlockProperties
+        v-else-if="selectedBlock.type === 'table'"
+        :block="selectedBlock"
+        :on-image-upload="onImageUpload"
         @update="$emit('update-block', $event)"
+        @select-cell-block="handleSelectCellBlockFromTable"
       />
 
       <template v-else-if="selectedBlock.type === 'custom'">
@@ -69,7 +93,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { Document, Block, LayoutSettings, EditorState } from "../../core/types";
+import type { Document, Block, CellBlock, LayoutSettings, EditorState, ParentTableContext, TableBlock } from "../../core/types";
 import type { ImageUploadHandler } from "../../core/editor_api";
 import { resolveCustomBlockState } from "../../core/custom_block_registry";
 import DocumentProperties from "./DocumentProperties.vue";
@@ -77,6 +101,7 @@ import TextBlockProperties from "./TextBlockProperties.vue";
 import ButtonBlockProperties from "./ButtonBlockProperties.vue";
 import ImageBlockProperties from "./ImageBlockProperties.vue";
 import HtmlBlockProperties from "./HtmlBlockProperties.vue";
+import TableBlockProperties from "./TableBlockProperties.vue";
 import CustomBlockProperties from "./CustomBlockProperties.vue";
 
 const props = defineProps<{
@@ -88,15 +113,75 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: "update-layout", layout: LayoutSettings): void;
   (event: "update-block", block: Block): void;
+  (event: "update-cell-block", block: CellBlock): void;
+  (event: "delete-cell-block", tableBlockId: string, cellId: string, blockId: string): void;
   (event: "select-block", id: string | null): void;
+  (event: "select-cell-block-from-table", tableBlockId: string, cellId: string, blockId: string): void;
   (event: "format-bold"): void;
   (event: "format-color", color: string): void;
 }>();
 
-const selectedBlock = computed<Block | undefined>(() => {
+const parentTableContext = computed<ParentTableContext | null>(() => {
+  return props.editorState.parentTableContext ?? null;
+});
+
+const findCellBlock = (): CellBlock | undefined => {
+  const ctx = parentTableContext.value;
+  if (!ctx) {
+    return undefined;
+  }
+  const tableBlock = props.document.blocks.find(
+    (b) => b.id === ctx.tableBlockId && b.type === "table"
+  ) as TableBlock | undefined;
+  if (!tableBlock) {
+    return undefined;
+  }
+  for (const row of tableBlock.rows) {
+    for (const cell of row.cells) {
+      if (cell.id === ctx.cellId) {
+        return cell.blocks.find((b) => b.id === props.editorState.selectedBlockId);
+      }
+    }
+  }
+  return undefined;
+};
+
+const handleBackToTable = () => {
+  const ctx = parentTableContext.value;
+  if (ctx) {
+    emit("select-block", ctx.tableBlockId);
+  }
+};
+
+const handleDeleteCellBlock = () => {
+  const ctx = parentTableContext.value;
+  if (!ctx || !selectedBlock.value) {
+    return;
+  }
+  emit("delete-cell-block", ctx.tableBlockId, ctx.cellId, selectedBlock.value.id);
+};
+
+const handleCellBlockUpdate = (block: CellBlock) => {
+  emit("update-cell-block", block);
+};
+
+const handleSelectCellBlockFromTable = (cellId: string, blockId: string) => {
+  // When clicking a cell block in TableBlockProperties, we need to set up the context
+  // The table block is currently selected, so we use its ID
+  if (selectedBlock.value && selectedBlock.value.type === "table") {
+    emit("select-cell-block-from-table", selectedBlock.value.id, cellId, blockId);
+  }
+};
+
+const selectedBlock = computed<Block | CellBlock | undefined>(() => {
   if (!props.editorState.selectedBlockId) {
     return undefined;
   }
+  // First check if it's a cell block
+  if (parentTableContext.value) {
+    return findCellBlock();
+  }
+  // Otherwise, look in top-level blocks
   return props.document.blocks.find(b => b.id === props.editorState.selectedBlockId);
 });
 
@@ -109,6 +194,7 @@ const title = computed(() => {
     case "button": return "Button Properties";
     case "image": return "Image Properties";
     case "html": return "HTML Properties";
+    case "table": return "Table Properties";
     case "custom": return "Custom Block Properties";
     default: return "Block Properties";
   }
@@ -156,6 +242,34 @@ const customBlockState = computed(() => {
 }
 
 .ee-close-msg:hover {
+  text-decoration: underline;
+}
+
+.ee-delete-msg {
+  font-size: 12px;
+  color: #b91c1c;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.ee-delete-msg:hover {
+  text-decoration: underline;
+}
+
+.ee-back-btn {
+  font-size: 12px;
+  color: #2563eb;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0;
+  margin-right: 8px;
+}
+
+.ee-back-btn:hover {
   text-decoration: underline;
 }
 
