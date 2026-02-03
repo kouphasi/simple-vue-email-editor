@@ -104,9 +104,9 @@ const renderButtonBlock = (block: ButtonBlock): string => {
 
 const renderImageBlock = (block: ImageBlock): string => {
   const align = sanitizeAlign(block.display.align, "center");
-  const width = block.display.widthPx ? `width:${block.display.widthPx}px;` : "";
-  const height = block.display.heightPx ? `height:${block.display.heightPx}px;` : "";
-  const styles = ["display:block", "border:0", width, height].filter(Boolean).join("");
+  const width = block.display.widthPx ? `width:${block.display.widthPx}px` : "";
+  const height = block.display.heightPx ? `height:${block.display.heightPx}px` : "";
+  const styles = ["display:block", "border:0", width, height].filter(Boolean).join(";");
 
   return `<div style=\"text-align:${align};margin:0 0 16px 0;\"><img src=\"${block.url}\" alt=\"\" style=\"${styles}\" /></div>`;
 };

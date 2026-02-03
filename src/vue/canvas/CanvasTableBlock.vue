@@ -56,7 +56,14 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import type { BlockType, CellBlock, TableBlock, TableCell, TableRow } from "../../core/types";
+import type {
+  BlockType,
+  CellBlock,
+  ImageBlock,
+  TableBlock,
+  TableCell,
+  TableRow
+} from "../../core/types";
 import { renderBlockHtml } from "../../rendering/html_renderer";
 import { resolveCellWidths } from "../../core/table_utils";
 import CanvasBlock from "./CanvasBlock.vue";
@@ -271,9 +278,22 @@ const sanitizeHtml = (html: string): string => {
   return doc.body.innerHTML;
 };
 
+const renderImagePlaceholder = (block: ImageBlock): string => {
+  const message =
+    block.status === "uploading"
+      ? "Uploading..."
+      : block.status === "error"
+        ? "Error loading image"
+        : "No image selected";
+  return `<div class="ee-image-placeholder"><span>${message}</span></div>`;
+};
+
 const renderSingleBlock = (block: CellBlock): string => {
   if (block.type === "html") {
     return sanitizeHtml(block.content);
+  }
+  if (block.type === "image" && (!block.url || block.status !== "ready")) {
+    return renderImagePlaceholder(block);
   }
   return renderBlockHtml(block);
 };
@@ -326,6 +346,19 @@ const renderSingleBlock = (block: CellBlock): string => {
 .ee-cell-empty.is-drop-disabled {
   background: #fee2e2;
   border-color: #ef4444;
+}
+
+:deep(.ee-image-placeholder) {
+  width: 100%;
+  height: 120px;
+  background: #f3f4f6;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 14px;
 }
 
 .ee-cell-block-frame {
