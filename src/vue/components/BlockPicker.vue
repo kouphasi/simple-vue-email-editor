@@ -59,7 +59,11 @@ import type {
   TextBlock
 } from "../../core/types";
 import { subscribeCustomBlockDefinitions } from "../../core/custom_block_registry";
-import { DEFAULT_FONT_SIZE_PX } from "../../core/validation";
+import {
+  DEFAULT_BUTTON_PADDING_HORIZONTAL_PX,
+  DEFAULT_BUTTON_PADDING_VERTICAL_PX,
+  DEFAULT_FONT_SIZE_PX
+} from "../../core/validation";
 import { createCustomBlockInstance, createTableBlock } from "../../services/document_service";
 
 const emit = defineEmits<{
@@ -93,7 +97,10 @@ const createButtonBlock = (): ButtonBlock => ({
   shape: "rounded",
   textColor: "#ffffff",
   backgroundColor: "#2b6cb0",
-  fontSize: DEFAULT_FONT_SIZE_PX
+  fontSize: DEFAULT_FONT_SIZE_PX,
+  paddingVerticalPx: DEFAULT_BUTTON_PADDING_VERTICAL_PX,
+  paddingHorizontalPx: DEFAULT_BUTTON_PADDING_HORIZONTAL_PX,
+  paddingLocked: false
 });
 
 const createImageBlock = (): ImageBlock => ({

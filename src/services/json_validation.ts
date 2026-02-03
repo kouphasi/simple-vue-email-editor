@@ -17,6 +17,7 @@ import { getCustomBlockDefinition } from "../core/custom_block_registry";
 import { validateSettingsSchema } from "../core/custom_block_validation";
 import {
   areTextRunsValid,
+  isValidButtonPadding,
   isValidFontSize,
   isValidHexColor,
   isValidHttpUrl
@@ -77,6 +78,21 @@ const validateButtonBlock = (block: ButtonBlock): string[] => {
 
   if (!isValidFontSize(block.fontSize)) {
     errors.push(`Invalid button font size in block ${block.id}`);
+  }
+
+  if (!isValidButtonPadding(block.paddingVerticalPx)) {
+    errors.push(`Invalid button vertical padding in block ${block.id}`);
+  }
+
+  if (!isValidButtonPadding(block.paddingHorizontalPx)) {
+    errors.push(`Invalid button horizontal padding in block ${block.id}`);
+  }
+
+  if (
+    block.paddingLocked !== undefined &&
+    typeof block.paddingLocked !== "boolean"
+  ) {
+    errors.push(`Invalid button padding lock in block ${block.id}`);
   }
 
   return errors;

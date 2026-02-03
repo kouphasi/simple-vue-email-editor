@@ -14,7 +14,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ButtonBlock } from "../../core/types";
-import { DEFAULT_FONT_SIZE_PX } from "../../core/validation";
+import {
+  DEFAULT_BUTTON_PADDING_HORIZONTAL_PX,
+  DEFAULT_BUTTON_PADDING_VERTICAL_PX,
+  DEFAULT_FONT_SIZE_PX
+} from "../../core/validation";
 
 const props = defineProps<{
   block: ButtonBlock;
@@ -38,12 +42,16 @@ const buttonStyle = computed(() => {
       : props.block.shape === "rounded"
         ? "8px"
         : "0";
+  const paddingVertical =
+    props.block.paddingVerticalPx ?? DEFAULT_BUTTON_PADDING_VERTICAL_PX;
+  const paddingHorizontal =
+    props.block.paddingHorizontalPx ?? DEFAULT_BUTTON_PADDING_HORIZONTAL_PX;
 
   return {
     backgroundColor: props.block.backgroundColor,
     color: props.block.textColor,
     borderRadius: radius,
-    padding: "12px 20px",
+    padding: `${paddingVertical}px ${paddingHorizontal}px`,
     display: "inline-block",
     textDecoration: "none",
     fontFamily: "Helvetica, Arial, sans-serif",
