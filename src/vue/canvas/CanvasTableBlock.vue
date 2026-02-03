@@ -33,14 +33,24 @@
               :class="{
                 'is-dragging': dragSource?.type === 'cell' && dragSource.blockId === cellBlock.id
               }"
-              :selected="selectedCellBlockId === cellBlock.id"
+              :selected="isCellBlockSelected(cellBlock.id)"
               @select="handleCellBlockClick(cell.id, cellBlock.id)"
               @dragstart="handleCellBlockDragStart(cell.id, cellBlock.id, $event)"
               @dragend="handleCellBlockDragEnd"
               @delete="handleCellBlockDelete(cell.id, cellBlock.id)"
             >
+              <CanvasTextBlock
+                v-if="cellBlock.type === 'text'"
+                :block="cellBlock"
+                :selected="isCellBlockSelected(cellBlock.id)"
+                :editing="isCellBlockEditing(cellBlock.id)"
+                :ref="registerTextBlockRef ? registerTextBlockRef(cellBlock.id) : undefined"
+                @update="handleCellBlockUpdate"
+                @edit="handleCellBlockEdit(cell.id, cellBlock.id)"
+                @select="handleCellBlockClick(cell.id, cellBlock.id)"
+              />
               <div
-                v-if="cellBlock.type === 'html' && !cellBlock.content"
+                v-else-if="cellBlock.type === 'html' && !cellBlock.content"
                 class="ee-html-placeholder"
               >
                 Empty HTML Block
@@ -67,6 +77,7 @@ import type {
 import { renderBlockHtml } from "../../rendering/html_renderer";
 import { resolveCellWidths } from "../../core/table_utils";
 import CanvasBlock from "./CanvasBlock.vue";
+import CanvasTextBlock from "./CanvasTextBlock.vue";
 
 type DragSource =
   | {
@@ -87,6 +98,8 @@ const props = defineProps<{
   block: TableBlock;
   selectedCellBlockId?: string | null;
   dragSource?: DragSource | null;
+  isEditingText?: boolean;
+  registerTextBlockRef?: (id: string) => (el: unknown) => void;
 }>();
 
 const emit = defineEmits<{
@@ -95,6 +108,8 @@ const emit = defineEmits<{
   (event: "cell-block-drag-end"): void;
   (event: "cell-drop", cellId: string): void;
   (event: "cell-block-delete", cellId: string, blockId: string): void;
+  (event: "update-cell-block", block: CellBlock): void;
+  (event: "cell-block-edit", cellId: string, blockId: string): void;
 }>();
 
 const dragOverCellId = ref<string | null>(null);
@@ -114,6 +129,22 @@ const handleCellBlockDragEnd = () => {
 
 const handleCellBlockDelete = (cellId: string, blockId: string) => {
   emit("cell-block-delete", cellId, blockId);
+};
+
+const handleCellBlockUpdate = (block: CellBlock) => {
+  emit("update-cell-block", block);
+};
+
+const handleCellBlockEdit = (cellId: string, blockId: string) => {
+  emit("cell-block-edit", cellId, blockId);
+};
+
+const isCellBlockSelected = (blockId: string): boolean => {
+  return props.selectedCellBlockId === blockId;
+};
+
+const isCellBlockEditing = (blockId: string): boolean => {
+  return Boolean(props.isEditingText && props.selectedCellBlockId === blockId);
 };
 
 const getCellStyle = (row: TableRow, index: number): Record<string, string> => {

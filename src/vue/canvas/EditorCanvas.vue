@@ -56,11 +56,15 @@
             :block="block"
             :selected-cell-block-id="getSelectedCellBlockId(block.id)"
             :drag-source="dragSource"
+            :is-editing-text="isEditingText"
+            :register-text-block-ref="makeTextBlockRef"
             @select-cell-block="(cellId, blockId) => handleSelectCellBlock(block.id, cellId, blockId)"
             @cell-block-drag-start="(cellId, blockId, event) => handleCellBlockDragStart(block.id, cellId, blockId, event)"
             @cell-block-drag-end="handleCellBlockDragEnd"
             @cell-block-delete="(cellId, blockId) => handleCellBlockDelete(block.id, cellId, blockId)"
             @cell-drop="(cellId) => handleCellDrop(block.id, cellId)"
+            @update-cell-block="handleCellBlockUpdate"
+            @cell-block-edit="(cellId, blockId) => handleCellBlockEdit(blockId)"
           />
           <CanvasCustomBlock
             v-else-if="block.type === 'custom' && resolveCustomBlock(block).state === 'ready'"
@@ -108,6 +112,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: "update-block", block: Block): void;
+  (event: "update-cell-block", block: CellBlock): void;
   (event: "reorder", fromIndex: number, toIndex: number): void;
   (event: "delete-block", blockId: string): void;
   (event: "select-block", blockId: string | null): void;
@@ -231,6 +236,10 @@ const handleBackgroundClick = (event: MouseEvent) => {
 
 const handleUpdate = (blockId: string, updatedBlock: Block) => {
   emit("update-block", updatedBlock);
+};
+
+const handleCellBlockUpdate = (block: CellBlock) => {
+  emit("update-cell-block", block);
 };
 
 const handleDelete = (blockId: string) => {
@@ -457,6 +466,12 @@ const getSelectedCellBlockId = (tableBlockId: string): string | null => {
 
 const handleSelectCellBlock = (tableBlockId: string, cellId: string, blockId: string) => {
   emit("select-cell-block", tableBlockId, cellId, blockId);
+};
+
+const handleCellBlockEdit = (blockId: string) => {
+  if (selectedBlockId.value === blockId) {
+    emit("set-editing", true);
+  }
 };
 </script>
 

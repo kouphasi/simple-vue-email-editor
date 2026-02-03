@@ -31,6 +31,7 @@
           :document="editorDocument"
           :editor-state="editorState"
           @update-block="handleUpdateBlock"
+          @update-cell-block="handleUpdateCellBlock"
           @delete-block="handleDeleteBlock"
           @reorder="handleReorder"
           @select-block="handleSelectBlock"
