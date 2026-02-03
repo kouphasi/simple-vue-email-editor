@@ -49,14 +49,63 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import EmailEditor, {
-  createCustomBlockInstance,
   registerCustomBlock,
   serializeDocument
 } from "email-editor";
 import type { Document } from "email-editor";
 
 const editorRef = ref<InstanceType<typeof EmailEditor> | null>(null);
-const json = ref("");
+const defaultDocument: Document = {
+  id: "6ea2c487-7ecd-4bd5-bbeb-520ad6764c11",
+  blocks: [
+    {
+      id: "ddead48f-933a-40a8-85ef-2ee161a6ac86",
+      type: "text",
+      text: "Simple Vue Email Editor",
+      runs: [{ start: 0, end: 23, bold: true, color: "#00a303" }],
+      fontSize: 26,
+      align: "center"
+    },
+    {
+      id: "126e6f33-9c8c-4573-b18d-7640b78d93a0",
+      type: "image",
+      url: "https://private-user-images.githubusercontent.com/89081817/544375423-af5ef402-86ff-49f8-9c2f-98f05d44d727.jpeg?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NzAxMjgzMTQsIm5iZiI6MTc3MDEyODAxNCwicGF0aCI6Ii84OTA4MTgxNy81NDQzNzU0MjMtYWY1ZWY0MDItODZmZi00OWY4LTljMmYtOThmMDVkNDRkNzI3LmpwZWc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwMjAzJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDIwM1QxNDEzMzRaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04YmUxNjQxMmY5ZjI0ZjVkNGY3ZThmMjgxZjEwODM1MWU4OGVlY2MzZWQ2NjMzYzUwMWI3ZjhkZWRiYTVmMjc2JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.vR3jQb7PgI5-UqLmtYgmvAY67ejC2nSUAMBSYLQ58lg",
+      status: "ready",
+      display: {
+        align: "center",
+        widthPx: 322
+      }
+    },
+    {
+      id: "47853748-9607-4896-b37c-ab444114e9a2",
+      type: "button",
+      label: "view in Github",
+      url: "https://example.com",
+      shape: "rounded",
+      textColor: "#ffffff",
+      backgroundColor: "#00a302",
+      fontSize: 16,
+      align: "center"
+    },
+    {
+      id: "4f8cb0b5-f49b-44eb-a73f-286ad245fa07",
+      type: "custom",
+      definitionId: "hero",
+      config: {
+        headline: "You Can Create An Original Block!",
+        ctaUrl: "https://github.com/kouphasi/simple-vue-email-editor"
+      },
+      state: "ready",
+      readOnly: false
+    }
+  ],
+  layout: {
+    previewMode: "mobile",
+    previewWidthPx: 375
+  }
+};
+
+const json = ref(serializeDocument(defaultDocument));
 
 registerCustomBlock({
   id: "hero",
@@ -99,54 +148,7 @@ const handleExportHtml = (): void => {
 };
 
 const loadSample = (): void => {
-  const sample: Document = {
-    id: "demo-doc",
-    layout: {
-      previewMode: "desktop",
-      previewWidthPx: 640
-    },
-    blocks: [
-      {
-        id: "text-1",
-        type: "text",
-        text: "Welcome to the email editor demo. Select text to bold or color.",
-        runs: [
-          {
-            start: 11,
-            end: 26,
-            bold: true,
-            color: null
-          }
-        ]
-      },
-      {
-        id: "button-1",
-        type: "button",
-        label: "Learn more",
-        url: "https://example.com",
-        shape: "pill",
-        textColor: "#ffffff",
-        backgroundColor: "#2b6cb0"
-      },
-      {
-        id: "image-1",
-        type: "image",
-        url: "https://placehold.jp/3ac11f/ffffff/150x150.png?text=%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E3%81%AE%E7%94%BB%E5%83%8F",
-        status: "ready",
-        display: {
-          align: "center",
-          widthPx: 150,
-          heightPx: 150
-        }
-      },
-      createCustomBlockInstance("hero", {
-        headline: "Custom hero block",
-        ctaUrl: "https://example.com"
-      })
-    ]
-  };
-
-  json.value = serializeDocument(sample);
+  json.value = serializeDocument(defaultDocument);
 };
 </script>
 
