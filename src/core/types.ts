@@ -43,6 +43,9 @@ export interface ButtonBlock extends BlockBase {
   textColor: string;
   backgroundColor: string;
   fontSize?: number;
+  paddingVerticalPx?: number;
+  paddingHorizontalPx?: number;
+  paddingLocked?: boolean;
   align?: BlockAlign;
 }
 

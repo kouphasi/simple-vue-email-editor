@@ -12,7 +12,11 @@ import {
 } from "../core/types";
 import { getCustomBlockDefinition } from "../core/custom_block_registry";
 import { resolveCellWidths } from "../core/table_utils";
-import { DEFAULT_FONT_SIZE_PX } from "../core/validation";
+import {
+  DEFAULT_BUTTON_PADDING_HORIZONTAL_PX,
+  DEFAULT_BUTTON_PADDING_VERTICAL_PX,
+  DEFAULT_FONT_SIZE_PX
+} from "../core/validation";
 
 const escapeHtml = (value: string): string => {
   return value
@@ -86,6 +90,8 @@ const renderButtonBlock = (block: ButtonBlock): string => {
   const radius = block.shape === "pill" ? 999 : block.shape === "rounded" ? 8 : 0;
   const label = escapeHtml(block.label);
   const fontSize = block.fontSize ?? DEFAULT_FONT_SIZE_PX;
+  const paddingVertical = block.paddingVerticalPx ?? DEFAULT_BUTTON_PADDING_VERTICAL_PX;
+  const paddingHorizontal = block.paddingHorizontalPx ?? DEFAULT_BUTTON_PADDING_HORIZONTAL_PX;
   const styles = [
     "display:inline-block",
     `background-color:${block.backgroundColor}`,
@@ -94,7 +100,7 @@ const renderButtonBlock = (block: ButtonBlock): string => {
     "text-decoration:none",
     "font-family:Helvetica,Arial,sans-serif",
     `font-size:${fontSize}px`,
-    "padding:12px 20px"
+    `padding:${paddingVertical}px ${paddingHorizontal}px`
   ];
 
   return `<div style=\"text-align:${align};margin:0 0 16px 0;\"><a href=\"${block.url}\" style=\"${styles.join(
@@ -104,9 +110,9 @@ const renderButtonBlock = (block: ButtonBlock): string => {
 
 const renderImageBlock = (block: ImageBlock): string => {
   const align = sanitizeAlign(block.display.align, "center");
-  const width = block.display.widthPx ? `width:${block.display.widthPx}px;` : "";
-  const height = block.display.heightPx ? `height:${block.display.heightPx}px;` : "";
-  const styles = ["display:block", "border:0", width, height].filter(Boolean).join("");
+  const width = block.display.widthPx ? `width:${block.display.widthPx}px` : "";
+  const height = block.display.heightPx ? `height:${block.display.heightPx}px` : "";
+  const styles = ["display:block", "border:0", width, height].filter(Boolean).join(";");
 
   return `<div style=\"text-align:${align};margin:0 0 16px 0;\"><img src=\"${block.url}\" alt=\"\" style=\"${styles}\" /></div>`;
 };

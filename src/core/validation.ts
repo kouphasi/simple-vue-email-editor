@@ -4,6 +4,10 @@ const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 export const FONT_SIZE_MIN_PX = 8;
 export const FONT_SIZE_MAX_PX = 72;
 export const DEFAULT_FONT_SIZE_PX = 16;
+export const DEFAULT_BUTTON_PADDING_VERTICAL_PX = 12;
+export const DEFAULT_BUTTON_PADDING_HORIZONTAL_PX = 20;
+export const BUTTON_PADDING_MIN_PX = 0;
+export const BUTTON_PADDING_MAX_PX = 80;
 
 export function isValidHttpUrl(value: string): boolean {
   if (!value) {
@@ -62,5 +66,17 @@ export function isValidFontSize(value: number | undefined): boolean {
     Number.isFinite(value) &&
     value >= FONT_SIZE_MIN_PX &&
     value <= FONT_SIZE_MAX_PX
+  );
+}
+
+export function isValidButtonPadding(value: number | undefined): boolean {
+  if (value === undefined) {
+    return true;
+  }
+
+  return (
+    Number.isFinite(value) &&
+    value >= BUTTON_PADDING_MIN_PX &&
+    value <= BUTTON_PADDING_MAX_PX
   );
 }
