@@ -75,6 +75,7 @@ import type {
   TableRow
 } from "../../core/types";
 import { renderBlockHtml } from "../../rendering/html_renderer";
+import { sanitizePreviewHtml } from "../../rendering/html_sanitizer";
 import { resolveCellWidths } from "../../core/table_utils";
 import CanvasBlock from "./CanvasBlock.vue";
 import CanvasTextBlock from "./CanvasTextBlock.vue";
@@ -260,55 +261,6 @@ watch(
   }
 );
 
-const BLOCKED_TAGS = [
-  "script",
-  "iframe",
-  "object",
-  "embed",
-  "link",
-  "meta",
-  "base",
-  "form"
-].join(",");
-
-const URL_ATTRS = new Set(["href", "src", "xlink:href", "formaction"]);
-const JAVASCRIPT_URL_RE = /^\s*javascript:/i;
-
-const sanitizeHtml = (html: string): string => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-
-  doc.querySelectorAll(BLOCKED_TAGS).forEach((el) => el.remove());
-
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
-  let currentNode = walker.currentNode as Element | null;
-
-  while (currentNode) {
-    for (const attr of Array.from(currentNode.attributes)) {
-      const name = attr.name.toLowerCase();
-      const value = attr.value;
-
-      if (name.startsWith("on")) {
-        currentNode.removeAttribute(attr.name);
-        continue;
-      }
-
-      if (name === "style") {
-        currentNode.removeAttribute(attr.name);
-        continue;
-      }
-
-      if (URL_ATTRS.has(name) && JAVASCRIPT_URL_RE.test(value)) {
-        currentNode.removeAttribute(attr.name);
-      }
-    }
-
-    currentNode = walker.nextNode() as Element | null;
-  }
-
-  return doc.body.innerHTML;
-};
-
 const renderImagePlaceholder = (block: ImageBlock): string => {
   const message =
     block.status === "uploading"
@@ -321,12 +273,14 @@ const renderImagePlaceholder = (block: ImageBlock): string => {
 
 const renderSingleBlock = (block: CellBlock): string => {
   if (block.type === "html") {
-    return sanitizeHtml(block.content);
+    return sanitizePreviewHtml(block.content);
   }
   if (block.type === "image" && (!block.url || block.status !== "ready")) {
     return renderImagePlaceholder(block);
   }
-  return renderBlockHtml(block);
+  return sanitizePreviewHtml(renderBlockHtml(block), {
+    stripStyleAttributes: false
+  });
 };
 </script>
 
