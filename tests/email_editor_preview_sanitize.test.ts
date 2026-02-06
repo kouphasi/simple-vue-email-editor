@@ -12,7 +12,7 @@ describe("EmailEditor - final preview sanitize", () => {
           id: "html-1",
           type: "html",
           content:
-            "<div style=\"color:red\" onclick=\"alert(1)\">ok</div><script>alert(1)</script><img src=\"x\" onerror=\"alert(2)\" /><a href=\"javascript:alert(3)\">bad</a>"
+            "<style>.preview-safe { color: red; }</style><div class=\"preview-safe\" style=\"color:red\" onclick=\"alert(1)\">ok</div><script>alert(1)</script><img src=\"x\" onerror=\"alert(2)\" /><a href=\"javascript:alert(3)\">bad</a>"
         }
       ]
     };
@@ -36,6 +36,8 @@ describe("EmailEditor - final preview sanitize", () => {
     expect(srcdoc).not.toMatch(/\sonerror=/i);
     expect(srcdoc).not.toMatch(/javascript:/i);
     expect(srcdoc).toContain(">bad</a>");
+    expect(srcdoc).toContain("<style>.preview-safe { color: red; }</style>");
+    expect(srcdoc).toContain("class=\"preview-safe\"");
 
     wrapper.destroy();
   });

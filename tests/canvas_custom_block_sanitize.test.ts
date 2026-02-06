@@ -10,7 +10,7 @@ const createDefinition = (id: string): CustomBlockDefinition => ({
   defaultConfig: {},
   validate: () => ({ ok: true, missingFields: [] }),
   renderHtml: () =>
-    "<div style=\"color:red\" onclick=\"alert(1)\"><script>alert(1)</script><a href=\"javascript:alert(1)\">bad</a><img src=\"x\" onerror=\"alert(2)\" /></div>"
+    "<style>.safe { color: red; }</style><div class=\"safe\" style=\"color:red\" onclick=\"alert(1)\"><script>alert(1)</script><a href=\"javascript:alert(1)\">bad</a><img src=\"x\" onerror=\"alert(2)\" /></div>"
 });
 
 describe("CanvasCustomBlock - sanitize html preview", () => {
@@ -37,6 +37,8 @@ describe("CanvasCustomBlock - sanitize html preview", () => {
     expect(preview.innerHTML).not.toMatch(/\sonerror=/i);
     expect(preview.innerHTML).not.toMatch(/javascript:/i);
     expect(preview.innerHTML).toContain(">bad</a>");
+    expect(preview.innerHTML).toContain("<style>.safe { color: red; }</style>");
+    expect(preview.innerHTML).toContain("class=\"safe\"");
     expect(preview.innerHTML).toMatch(/\sstyle=/i);
 
     wrapper.destroy();

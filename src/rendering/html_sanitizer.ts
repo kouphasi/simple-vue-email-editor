@@ -31,7 +31,7 @@ export const sanitizePreviewHtml = (
 
   doc.querySelectorAll(BLOCKED_TAGS).forEach((el) => el.remove());
 
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
+  const walker = doc.createTreeWalker(doc.documentElement, NodeFilter.SHOW_ELEMENT);
   let currentNode = walker.currentNode as Element | null;
 
   while (currentNode) {
@@ -57,5 +57,9 @@ export const sanitizePreviewHtml = (
     currentNode = walker.nextNode() as Element | null;
   }
 
-  return doc.body.innerHTML;
+  const headStyles = Array.from(doc.head.querySelectorAll("style"))
+    .map((style) => style.outerHTML)
+    .join("");
+
+  return `${headStyles}${doc.body.innerHTML}`;
 };
