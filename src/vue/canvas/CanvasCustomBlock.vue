@@ -8,12 +8,17 @@
 import { computed } from "vue";
 import type { CustomBlockInstance } from "../../core/types";
 import { renderBlockHtml } from "../../rendering/html_renderer";
+import { sanitizePreviewHtml } from "../../rendering/html_sanitizer";
 
 const props = defineProps<{
   block: CustomBlockInstance;
 }>();
 
-const previewHtml = computed(() => renderBlockHtml(props.block, { mode: "preview" }));
+const previewHtml = computed(() =>
+  sanitizePreviewHtml(renderBlockHtml(props.block, { mode: "preview" }), {
+    stripStyleAttributes: false
+  })
+);
 </script>
 
 <style scoped>

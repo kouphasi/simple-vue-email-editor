@@ -79,6 +79,7 @@
               <iframe
                 class="ee-preview-frame"
                 :srcdoc="finalPreviewHtml"
+                sandbox=""
                 title="Email Preview"
               ></iframe>
            </div>
@@ -111,6 +112,7 @@ import { serializeDocument } from "../services/json_export";
 import { validateDocument } from "../services/json_validation";
 import { renderBlockHtml } from "../rendering/html_renderer";
 import { wrapEmailHtml } from "../rendering/html_templates";
+import { sanitizePreviewHtml } from "../rendering/html_sanitizer";
 import BlockPicker from "./components/BlockPicker.vue";
 import PreviewToggle from "./components/PreviewToggle.vue";
 import EditorCanvas from "./canvas/EditorCanvas.vue";
@@ -167,7 +169,11 @@ const documentPreviewMode = computed<PreviewMode>({
 
 const finalPreviewHtml = computed(() => {
   const content = editorDocument.value.blocks
-    .map((block) => renderBlockHtml(block, { mode: "preview" }))
+    .map((block) =>
+      sanitizePreviewHtml(renderBlockHtml(block, { mode: "preview" }), {
+        stripStyleAttributes: false
+      })
+    )
     .join("");
   const width = documentPreviewMode.value === "mobile" ? 375 : 640;
   return wrapEmailHtml(content, width, { responsive: true });

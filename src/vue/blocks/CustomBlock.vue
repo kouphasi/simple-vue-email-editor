@@ -15,6 +15,7 @@ import {
   subscribeCustomBlockDefinitions
 } from "../../core/custom_block_registry";
 import { renderBlockHtml } from "../../rendering/html_renderer";
+import { sanitizePreviewHtml } from "../../rendering/html_sanitizer";
 
 const props = defineProps<{
   block: CustomBlockInstance;
@@ -26,7 +27,11 @@ const definition = ref<CustomBlockDefinition | undefined>(
 let unsubscribe: (() => void) | null = null;
 
 const title = computed(() => definition.value?.displayName ?? props.block.definitionId);
-const previewHtml = computed(() => renderBlockHtml(props.block, { mode: "preview" }));
+const previewHtml = computed(() =>
+  sanitizePreviewHtml(renderBlockHtml(props.block, { mode: "preview" }), {
+    stripStyleAttributes: false
+  })
+);
 
 onMounted(() => {
   unsubscribe = subscribeCustomBlockDefinitions((definitions) => {
