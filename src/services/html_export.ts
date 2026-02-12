@@ -16,7 +16,8 @@ import {
   isValidButtonPadding,
   isValidFontSize,
   isValidHexColor,
-  isValidHttpUrl
+  isValidHttpUrl,
+  isValidImageUrl
 } from "../core/validation";
 import { renderBlockHtml } from "../rendering/html_renderer";
 import { wrapEmailHtml } from "../rendering/html_templates";
@@ -97,7 +98,7 @@ const validateButtonBlockForExport = (block: ButtonBlock): string[] => {
 
 const validateImageBlockForExport = (block: ImageBlock): string[] => {
   const errors: string[] = [];
-  if (!isValidHttpUrl(block.url)) {
+  if (!isValidImageUrl(block.url)) {
     errors.push(`Invalid image URL for block ${block.id}`);
   }
 
