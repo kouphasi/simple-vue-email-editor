@@ -20,7 +20,8 @@ import {
   isValidButtonPadding,
   isValidFontSize,
   isValidHexColor,
-  isValidHttpUrl
+  isValidHttpUrl,
+  isValidImageUrl
 } from "../core/validation";
 
 const BLOCK_ALIGNS: BlockAlign[] = ["left", "center", "right"];
@@ -103,7 +104,7 @@ const IMAGE_STATUSES: ImageBlock["status"][] = ["pending", "ready", "uploading",
 const validateImageBlock = (block: ImageBlock): string[] => {
   const errors: string[] = [];
 
-  if (block.url && !isValidHttpUrl(block.url)) {
+  if (block.url && !isValidImageUrl(block.url)) {
     errors.push(`Invalid image URL in block ${block.id}`);
   }
 
