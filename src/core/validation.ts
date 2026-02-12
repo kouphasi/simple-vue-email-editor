@@ -22,6 +22,18 @@ export function isValidHttpUrl(value: string): boolean {
   }
 }
 
+export function isValidImageUrl(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  if (value.startsWith("data:image/")) {
+    return true;
+  }
+
+  return isValidHttpUrl(value);
+}
+
 export function isValidHexColor(value: string | null | undefined): boolean {
   if (value == null) {
     return true;
