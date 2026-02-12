@@ -197,7 +197,9 @@ const setDocument = (next: Document, emitChanges: boolean): void => {
 const tryLoadDocument = (next: Document, emitChanges: boolean): void => {
   const validation = validateDocument(next);
   if (!validation.valid) {
-    emit("error", new Error(validation.errors.join("; ")));
+    const err = new Error(validation.errors.join("; "));
+    console.warn("[EmailEditor]", err.message);
+    emit("error", err);
     return;
   }
   setDocument(next, emitChanges);
@@ -209,7 +211,9 @@ const tryLoadJson = (value: string, emitChanges: boolean): void => {
     setDocument(parsed, emitChanges);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid JSON";
-    emit("error", new Error(message));
+    const err = new Error(message);
+    console.warn("[EmailEditor]", err.message);
+    emit("error", err);
   }
 };
 
